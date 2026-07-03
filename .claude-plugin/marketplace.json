@@ -1,0 +1,22 @@
+{
+  "name": "postnitro-agent",
+  "owner": {
+    "name": "Muneeb Awan",
+    "email": "muneeb@postnitro.ai"
+  },
+  "metadata": {
+    "description": "PostNitro carousel generation and social scheduling skill for AI agents",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "postnitro",
+      "description": "AI-carousel generation and social scheduling CLI — generate carousels from a topic/article/X post or import your own slides, apply brand kits, and schedule to LinkedIn, Instagram, TikTok, and Threads",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "name": "postnitro",
+  "version": "0.1.0",
+  "description": "AI-carousel generation and social scheduling CLI — generate carousels from a topic/article/X post or import your own slides, apply brand kits, and schedule to LinkedIn, Instagram, TikTok, and Threads",
+  "author": {
+    "name": "Muneeb Awan",
+    "email": "muneeb@postnitro.ai",
+    "url": "https://github.com/postnitro"
+  },
+  "homepage": "https://postnitro.ai",
+  "repository": "https://github.com/postnitro/postnitro-agent",
+  "license": "MIT",
+  "skills": ["./"],
+  "keywords": [
+    "postnitro",
+    "cli",
+    "carousel",
+    "social-media",
+    "scheduling",
+    "automation",
+    "ai-agent",
+    "linkedin",
+    "instagram",
+    "tiktok",
+    "threads"
+  ]
+}

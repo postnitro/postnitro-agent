@@ -1,0 +1,58 @@
+{
+  "slides": [
+    {
+      "type": "starting_slide",
+      "heading": "Introducing the PostNitro CLI",
+      "sub_heading": "Carousels from your terminal",
+      "description": "Generate, brand, and schedule social carousels with a single command — built for AI agents and scripts.",
+      "cta_button": "Swipe to see how →"
+    },
+    {
+      "type": "body_slide",
+      "heading": "One command, one carousel",
+      "description": "Hand it a topic and let PostNitro's AI do the rest. `postnitro carousel generate --context \"5 remote work tips\" --wait` returns a finished, on-brand carousel."
+    },
+    {
+      "type": "body_slide",
+      "heading": "Everything the CLI does",
+      "description": "A full content pipeline, scriptable end to end.",
+      "layoutType": "infographic",
+      "layoutConfig": {
+        "columnCount": 2,
+        "columnDisplay": "grid",
+        "displayCounterAs": "none",
+        "hasHeader": true,
+        "columnData": [
+          {
+            "header": "Create",
+            "content": [
+              { "title": "AI Generate", "description": "Turn a topic, article, or X post into a carousel." },
+              { "title": "Import Slides", "description": "Bring your own content via --slides or --file." },
+              { "title": "Brand Kits", "description": "Stamp your logo, name, and handle automatically." }
+            ]
+          },
+          {
+            "header": "Publish",
+            "content": [
+              { "title": "Schedule", "description": "Queue posts to LinkedIn, Instagram, TikTok & Threads." },
+              { "title": "Generate + Schedule", "description": "One command from prompt to scheduled post." },
+              { "title": "JSON Everywhere", "description": "Every response is clean JSON — pipe it anywhere." }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "body_slide",
+      "heading": "Made for automation",
+      "description": "JSON on stdout for success, JSON on stderr for errors, and predictable exit codes. No colors or tables to strip — safe to parse from any agent or shell script."
+    },
+    {
+      "type": "ending_slide",
+      "heading": "Ship your first carousel today",
+      "sub_heading": "Free to start",
+      "description": "Install the CLI and generate a carousel in under a minute.",
+      "cta_button": "npm i -g @postnitro/cli"
+    }
+  ]
+}

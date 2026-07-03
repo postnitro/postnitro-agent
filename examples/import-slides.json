@@ -1,0 +1,57 @@
+{
+  "slides": [
+    {
+      "type": "starting_slide",
+      "heading": "5 Habits of Great Remote Workers",
+      "sub_heading": "Work from anywhere, better",
+      "description": "The small routines that separate good remote workers from great ones.",
+      "cta_button": "Swipe to learn more →"
+    },
+    {
+      "type": "body_slide",
+      "heading": "Protect your deep work",
+      "description": "Block 90-minute focus windows before noon and treat them like client meetings — non-negotiable.",
+      "image": "https://images.unsplash.com/photo-1499750310107-5fef28a66643"
+    },
+    {
+      "type": "body_slide",
+      "heading": "The 4 pillars of a solid remote setup",
+      "description": "Get these right and everything else gets easier.",
+      "layoutType": "infographic",
+      "layoutConfig": {
+        "columnCount": 2,
+        "columnDisplay": "grid",
+        "displayCounterAs": "none",
+        "hasHeader": true,
+        "columnData": [
+          {
+            "header": "Space & Focus",
+            "content": [
+              { "title": "Dedicated Desk", "description": "A fixed spot signals to your brain that it's work time." },
+              { "title": "Noise Control", "description": "Headphones or a closed door — pick one." }
+            ]
+          },
+          {
+            "header": "Rhythm & Recovery",
+            "content": [
+              { "title": "Hard Stop Time", "description": "Set an end time and honor it." },
+              { "title": "Lunch Away", "description": "Take 30 screen-free minutes." }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "body_slide",
+      "heading": "Over-communicate by default",
+      "description": "Send the update before someone asks for it. Visibility is a skill now, not a personality trait."
+    },
+    {
+      "type": "ending_slide",
+      "heading": "Start with one habit today",
+      "sub_heading": "You don't need a perfect setup",
+      "description": "Pick one tip from this carousel and apply it this week.",
+      "cta_button": "Follow for more"
+    }
+  ]
+}

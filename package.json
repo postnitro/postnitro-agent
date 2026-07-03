@@ -1,0 +1,52 @@
+{
+  "name": "@postnitro/cli",
+  "version": "0.1.0",
+  "description": "Command-line interface for AI agents and scripts to generate and manage PostNitro content via the PostNitro Embed API.",
+  "type": "module",
+  "bin": {
+    "postnitro": "./dist/index.js"
+  },
+  "main": "dist/index.js",
+  "files": [
+    "dist",
+    "SKILL.md",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "postnitro",
+    "cli",
+    "ai-agent",
+    "carousel",
+    "social-media"
+  ],
+  "author": "Muneeb Awan <muneeb@postnitro.ai>",
+  "license": "MIT",
+  "homepage": "https://github.com/postnitro/postnitro-agent#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/postnitro/postnitro-agent.git"
+  },
+  "bugs": {
+    "url": "https://github.com/postnitro/postnitro-agent/issues"
+  },
+  "dependencies": {
+    "commander": "^12.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
