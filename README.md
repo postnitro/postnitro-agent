@@ -18,9 +18,9 @@ The skill is defined in [`SKILL.md`](SKILL.md) at the repo root (with a copy und
 
 # PostNitro CLI
 
-**Social carousel automation CLI for AI agents** — generate, brand, and schedule carousel posts to LinkedIn, Instagram, TikTok, and Threads programmatically.
+**Create and schedule on-brand social carousels from the command line.** Built for AI agents and scripts: turn a topic, article, or X thread — or your own slides — into a published LinkedIn, Instagram, TikTok, or Threads post.
 
-The PostNitro CLI provides a command-line interface to the [PostNitro Embed API](https://postnitro.ai), enabling developers and AI agents to turn topics, articles, or structured slide content into on-brand carousels and schedule them across social platforms. Every command prints JSON on stdout on success (exit 0) and JSON on stderr on failure (exit 1) — no colors, no tables, no interactive prompts.
+PostNitro creates on-brand carousels and schedules them to your social accounts; this CLI is a command-line interface to the [PostNitro Embed API](https://postnitro.ai). Every command prints JSON on stdout (exit 0) or stderr (exit 1) — no colors, tables, or prompts to strip.
 
 ---
 
