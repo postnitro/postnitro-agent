@@ -1,222 +1,146 @@
 ---
 name: postnitro
-description: PostNitro is a CLI for AI agents to generate carousels with AI (from a topic, article, or X post) or import your own slides, apply brand kits, and schedule carousel posts to LinkedIn, Instagram, TikTok, and Threads via the PostNitro Embed API. JSON in, JSON out.
+description: Create on-brand social media carousels and schedule them to LinkedIn, Instagram, TikTok, and Threads from a single command. Turn a topic, article, or X thread into a finished multi-slide post — or import your own slides — then publish or draft it automatically. Fully scriptable (JSON in, JSON out), so an AI agent can run the entire create-to-schedule workflow. Use this skill whenever the user wants to create a carousel, slide post, or multi-slide content, repurpose an article, blog post, or X thread into slides, or automate and schedule social media posts. Requires a PostNitro API key.
 homepage: https://postnitro.ai
-metadata: {"openclaw":{"emoji":"🎠","requires":{"bins":[],"env":["POSTNITRO_API_KEY"]}}}
+metadata: {"openclaw":{"emoji":"🎠","primaryEnv":"POSTNITRO_API_KEY","requires":{"bins":[],"env":["POSTNITRO_API_KEY"]}}}
 ---
 
-## Install PostNitro CLI if it doesn't exist
+# PostNitro — Create & Schedule Social Carousels
 
-```bash
-npm install -g @postnitro/cli
-```
+PostNitro creates on-brand social media carousels and schedules them across LinkedIn, Instagram, TikTok, and Threads. This skill drives it from the command line, so an agent can take a topic, article, or set of slides and produce a finished, scheduled post in one workflow. Every command is JSON in / JSON out — safe to script and chain.
 
-npm release: https://www.npmjs.com/package/@postnitro/cli
-postnitro cli github: https://github.com/postnitro/postnitro-agent
-official website: https://postnitro.ai
+## Setup
 
----
+1. Install the CLI:
+   ```bash
+   npm install -g @postnitro/cli
+   ```
+2. Sign up at https://postnitro.ai and subscribe to a plan — the Embed API requires a **paid subscription** (no free tier). Then generate an API key at account settings → **Embed** → Generate API Key.
+3. Authenticate (in order of precedence: `--api-key` flag → env var → saved config):
+   ```bash
+   postnitro auth set-key pn-xxxx        # persists to ~/.postnitro-cli/config.json
+   export POSTNITRO_API_KEY="pn-xxxx"    # or use an env var
+   ```
+4. Save defaults so you don't repeat template/brand/preset IDs on every call (the CLI's alternative to per-call flags — no env vars needed):
+   ```bash
+   postnitro defaults set --template-id <id> --brand-id <id> --preset-id <id> --response-type PDF
+   ```
 
-| Property | Value |
-|----------|-------|
-| **name** | postnitro |
-| **description** | AI-carousel generation and social scheduling CLI for LinkedIn, Instagram, TikTok, Threads |
-| **allowed-tools** | Bash(postnitro:*) |
+| Env var | Required | Purpose |
+|---------|----------|---------|
+| `POSTNITRO_API_KEY` | Yes* | API key (*unless passed via `--api-key` or saved with `auth set-key`) |
+| `POSTNITRO_API_BASE_URL` | No | Override API endpoint (default `https://embed-api.postnitro.ai`) |
 
----
-
-## ⚠️ Two Hard Rules (Read First)
-
-**Rule 1 — Authenticate before anything.** All commands fail without a valid API key.
-
-**Rule 2 — Schedule with the `designId`, NOT the `embedPostId`.** `carousel generate` and `carousel import` return an **`embedPostId`** — that's the async *job*, not the finished carousel. To schedule the result you need its **`designId`**, which appears in the `--wait` output (or in `carousel output <embedPostId>` once the job is `COMPLETED`). Passing an `embedPostId` to `schedule` will fail. Always:
-
-```bash
-DID=$(postnitro carousel generate --context "..." --type text --wait | jq -r .designId)
-postnitro schedule create --design-id "$DID" ...
-```
-
-If you see `--design-id <designId>` anywhere below, it means "the `designId` from a completed generate/import" — never an `embedPostId`.
-
----
-
-## ⚠️ Authentication Required
-
-**You MUST authenticate before running any PostNitro CLI command.**
-
-Before doing anything else, check auth status:
-```bash
-postnitro auth status
-```
-
-If not authenticated, provide a key one of these ways (highest precedence first):
-1. `--api-key <key>` on any command
-2. `export POSTNITRO_API_KEY=pn-...`
-3. `postnitro auth set-key pn-...` (persists to `~/.postnitro-cli/config.json`)
-
-Get a key from **PostNitro → Profile → Embed → Generate API Key**. Never fabricate a key — ask the user.
-
-**Do NOT proceed with other commands until authentication is confirmed.**
-
----
+> **Key rule:** `carousel generate`/`import` return an **`embedPostId`** (the async job). To *schedule* the result you need its **`designId`** (from the `--wait` output or `carousel output`). Never pass an `embedPostId` to `schedule`.
 
 ## Core Workflow
 
-1. **Authenticate** — verify or set up the API key (see above)
-2. **Discover** — list templates, brands, presets, and social accounts; save defaults
-3. **Create** — generate a carousel with AI, or import your own slides (use `--wait`)
-4. **Capture the `designId`** — from the `--wait` output or `carousel output`
-5. **Schedule** — attach the design to social accounts with captions and per-platform settings
-6. **Manage** — list, update, or delete scheduled posts
+Carousel creation is asynchronous — `--wait` handles the polling and returns the finished output (including `designId`) in one call.
+
+### 1. Generate a carousel with AI
 
 ```bash
-# 1. Authenticate
-postnitro auth status
-
-# 2. Discover + save defaults
-postnitro template list
-postnitro brand list
-postnitro preset list
-postnitro social list
-postnitro defaults set --template-id <id> --brand-id <id> --preset-id <id> --response-type PDF
-
-# 3. Create (and wait for completion)
-postnitro carousel generate --context "5 tips for remote work" --type text --wait
-
-# 4. Capture the designId (from the JSON above)
-# 5. Schedule
-postnitro schedule create --status SCHEDULED --scheduled-at "2026-12-31T12:00:00Z" \
-  --design-id <designId> --selected-accounts '["<socialAccountId>"]' \
-  --linkedin-post-settings '{"postType":"document","postTitle":"5–90 char title"}' \
-  --post-content '{"common":"caption #hashtag"}'
-
-# 6. Manage
-postnitro schedule list --from "2026-12-01" --to "2026-12-31"
+postnitro carousel generate \
+  --context "5 tips for growing your LinkedIn audience in 2026" \
+  --type text \
+  --instructions "Professional tone, actionable advice" \
+  --wait
 ```
 
----
+**`--type` values:**
+- `text` — `--context` is the topic/text to turn into a carousel
+- `article` — `--context` is an article URL to extract and convert
+- `x` — `--context` is an X (Twitter) post/thread URL
 
-## Essential Commands
+Template/brand/preset come from saved defaults (or pass `--template-id/--brand-id/--preset-id`). The result JSON includes the **`designId`**.
 
-### Authentication
+### 2. Import your own slide content
+
 ```bash
-postnitro auth set-key pn-xxxx     # Save API key to ~/.postnitro-cli/config.json
-postnitro auth status              # Verify a key is configured
-postnitro auth clear               # Remove the stored key
-export POSTNITRO_API_KEY=pn-xxxx   # Or use an env var (no save)
-```
-
-### Discovery & Defaults
-```bash
-postnitro template list [--page <n>] [--limit <n>]   # Template IDs
-postnitro brand list [--page <n>] [--limit <n>]      # Brand IDs
-postnitro brand get <id>
-postnitro preset list [--page <n>] [--limit <n>]     # AI preset IDs
-postnitro social list                                # Social account IDs (for --selected-accounts)
-postnitro social get <id>
-
-# Save defaults so generate/import calls omit the IDs
-postnitro defaults set --template-id <id> --brand-id <id> --preset-id <id> --response-type PDF
-postnitro defaults get
-```
-
-### Creating Carousels
-```bash
-# See the required slide shape and rules
-postnitro carousel import-template
-
-# Generate with AI (context is a topic / article URL / X post URL depending on --type)
-postnitro carousel generate --context "topic or URL" --type text|article|x [--instructions "..."] --wait
-
-# Import your own slides (inline JSON overrides --file)
+# From a file, or inline JSON with --slides (inline overrides --file)
 postnitro carousel import --file ./slides.json --wait
-postnitro carousel import --slides '{"slides":[ ...>=3 slides... ]}' --wait
+postnitro carousel import --slides '{"slides":[
+  {"type":"starting_slide","heading":"Your Title","description":"Intro text"},
+  {"type":"body_slide","heading":"Key Point","description":"Details here"},
+  {"type":"ending_slide","heading":"Take Action!","cta_button":"Learn More"}
+]}' --wait
 ```
 
-### Checking Status & Output
+**Slide rules:** exactly 1 `starting_slide` (first), ≥1 `body_slide`, exactly 1 `ending_slide` (last); `heading` required on every slide. For infographics, set `layoutType: "infographic"` on a body slide (replaces its image with data columns, max 3). Run `postnitro carousel import-template` for the full schema.
+
+### 3. Check status / get output (only if you didn't use `--wait`)
+
 ```bash
-postnitro carousel status <embedPostId>   # Progress + step logs
-postnitro carousel output <embedPostId>   # Final files + designId (once COMPLETED)
+postnitro carousel status <embedPostId>   # progress + step logs; poll until COMPLETED
+postnitro carousel output <embedPostId>   # final file URL(s) + designId
 ```
 
-### Scheduling
+Output is a PDF (single URL) or PNG (one URL per slide), in `data`.
+
+### 4. Schedule the design to social accounts
+
 ```bash
+postnitro social list   # get account IDs + platforms
+
 postnitro schedule create \
   --status SCHEDULED \
-  --scheduled-at "2026-12-31T12:00:00Z" \
+  --scheduled-at "2026-12-31T13:00:00Z" \
   --design-id <designId> \
   --selected-accounts '["<socialAccountId>"]' \
   --linkedin-post-settings '{"postType":"document","postTitle":"5–90 char title"}' \
   --post-content '{"common":"Caption with #hashtags"}'
-
-postnitro schedule list --from "<date>" --to "<date>"
-postnitro schedule get <id>
-postnitro schedule update <id> ...same flags as create...   # REPLACES state — send the full body
-postnitro schedule delete <id> --yes
 ```
 
-### One-shot: Generate + Schedule
+### 5. One-shot: generate + schedule
+
 ```bash
 postnitro generate-and-schedule \
   --context "topic" --type text \
-  --status SCHEDULED --scheduled-at "2026-12-31T12:00:00Z" \
+  --status SCHEDULED --scheduled-at "2026-12-31T13:00:00Z" \
   --selected-accounts '["<socialAccountId>"]' \
   --linkedin-post-settings '{"postType":"document","postTitle":"..."}' \
   --post-content '{"common":"..."}'
 ```
 
-### Brand Kits
-```bash
-postnitro brand create --name "PostNitro" --handle "@postnitroai" --image "https://.../logo.png"
-postnitro brand create --data '{"name":"...","handle":"@...","image":"https://...","isCompanyDetail":true}'
-postnitro brand update <id> ...same as create...
-```
-
-### Social Accounts
-```bash
-postnitro social list                    # {count, accounts:[{id, platform, handle, name, accountType, status}]}
-postnitro social get <id>
-postnitro social disconnect <id> --yes   # Destructive — requires --yes
-```
-
----
-
 ## Common Patterns
 
-### Pattern 1: Generate → schedule to LinkedIn
+### Pattern 1: LinkedIn thought-leadership carousel
+```bash
+postnitro carousel generate \
+  --context "5 mistakes startups make with their LinkedIn strategy and how to fix each one" \
+  --type text --instructions "Professional but conversational. One clear takeaway per slide." --wait
+```
+
+### Pattern 2: Repurpose a blog post
+```bash
+postnitro carousel generate --context "https://yourblog.com/posts/social-media-strategy-2026" \
+  --type article --instructions "Extract the 5 most actionable points. Keep slide text concise." --wait
+```
+
+### Pattern 3: Repurpose an X thread
+```bash
+postnitro carousel generate --context "https://x.com/username/status/1234567890" \
+  --type x --instructions "Maintain the original voice and key points" --wait
+```
+
+### Pattern 4: Data-driven infographic carousel
+Import slides with `layoutType: "infographic"` body slides — see
+[examples/import-slides.json](https://github.com/postnitro/postnitro-agent/blob/main/examples/import-slides.json).
+
+### Pattern 5: Generate → schedule to LinkedIn
 ```bash
 DID=$(postnitro carousel generate --context "5 remote work habits" --type text --wait | jq -r .designId)
 LINKEDIN=$(postnitro social list | jq -r 'first(.accounts[] | select(.platform=="linkedin").id)')
-
-postnitro schedule create \
-  --status SCHEDULED --scheduled-at "2026-12-31T13:00:00Z" \
-  --design-id "$DID" \
-  --selected-accounts "[\"$LINKEDIN\"]" \
+postnitro schedule create --status SCHEDULED --scheduled-at "2026-12-31T13:00:00Z" \
+  --design-id "$DID" --selected-accounts "[\"$LINKEDIN\"]" \
   --linkedin-post-settings '{"postType":"document","postTitle":"5 remote work habits"}' \
   --post-content '{"common":"New carousel 🚀 #remotework"}'
 ```
 
-### Pattern 2: Import your own slides → schedule
+### Pattern 6: Batch scheduling
 ```bash
-DID=$(postnitro carousel import --file ./examples/import-slides.json --wait | jq -r .designId)
-postnitro schedule create --status DRAFT --scheduled-at "2026-12-31T13:00:00Z" --design-id "$DID"
-```
-
-### Pattern 3: One-shot generate + schedule
-```bash
-postnitro generate-and-schedule --context "How AI agents automate content" --type text \
-  --status SCHEDULED --scheduled-at "2026-12-31T12:00:00Z" \
-  --selected-accounts '["<socialAccountId>"]' \
-  --linkedin-post-settings '{"postType":"document","postTitle":"How AI agents automate content"}' \
-  --post-content '{"common":"New drop 🚀 #ai #automation"}'
-# If generation succeeds but scheduling fails, the error includes the designId —
-# retry `schedule create --design-id <id>` WITHOUT regenerating (saves credits).
-```
-
-### Pattern 4: Batch scheduling
-```bash
-DATES=("2026-02-14T09:00:00Z" "2026-02-15T09:00:00Z" "2026-02-16T09:00:00Z")
-TOPICS=("Monday motivation 💪" "Tuesday tips 💡" "Wednesday wisdom 🧠")
+DATES=("2026-02-14T09:00:00Z" "2026-02-15T09:00:00Z")
+TOPICS=("Monday motivation 💪" "Tuesday tips 💡")
 for i in "${!DATES[@]}"; do
   postnitro generate-and-schedule --context "${TOPICS[$i]}" --type text \
     --status SCHEDULED --scheduled-at "${DATES[$i]}" \
@@ -225,90 +149,34 @@ for i in "${!DATES[@]}"; do
 done
 ```
 
-### Pattern 5: Error handling & retry
-```bash
-for attempt in 1 2 3; do
-  if OUT=$(postnitro carousel generate --context "topic" --type text --wait 2>err.json); then
-    echo "$OUT" | jq -r .designId; break
-  else
-    echo "Attempt $attempt failed: $(jq -r .error.message err.json)"
-    [ "$attempt" -lt 3 ] && sleep $((2 ** attempt)) || exit 1
-  fi
-done
-```
+## Content Strategy Tips
 
----
+- **LinkedIn**: professional tone, actionable insights, 6–10 slides, clear CTA. PDF carousels post as `postType: "document"` (needs a 5–90 char `postTitle`).
+- **Instagram**: visual-first, concise text, 5–8 slides, storytelling arc. `postAsStory` for stories.
+- **TikTok**: trendy, punchy, 4–7 slides, hook on slide 1.
+- **X / Threads**: data-driven, 3–6 slides, provocative opening.
 
-## Technical Concepts
+## Common Gotchas
 
-### embedPostId vs designId
-`generate`/`import` create an async job → **`embedPostId`**. The finished carousel has a **`designId`** (in the `--wait` output or `carousel output`). **Schedule with the `designId`.** (See Hard Rule 2.)
+1. **Not authenticated** — run `postnitro auth status`; set a key before anything else.
+2. **Scheduling with `embedPostId`** — use the **`designId`** from `--wait`/`carousel output`, never the `embedPostId`.
+3. **`Scheduled at is in the past`** — `--scheduled-at` must be a future ISO-8601 datetime with a trailing `Z`.
+4. **Invalid inline JSON** — wrap JSON flags in single quotes; the CLI validates before any network call.
+5. **`Missing --brand-id ... multiple candidates`** — pass the ID or save a default with `defaults set`.
+6. **LinkedIn `document` rejected** — `postType:"document"` needs a 5–90 char `postTitle`.
+7. **Empty post** — a scheduled post needs either `--design-id` or non-empty `--post-content`.
+8. **Destructive commands** — `social disconnect` and `schedule delete` require `--yes`.
+9. **`SCHEDULED` publishes live** — use `DRAFT` when unsure; confirm time/account with the user first.
+10. **Default `responseType` is PDF** — pass `--response-type PNG` for individual slide images.
+11. **Credits vary** — AI generation ≈ 2 credits/slide; content import ≈ 1 credit/slide. Warn before large batches.
 
-### Async & `--wait`
-Generation runs in the background. `--wait` polls to completion and returns the final output — including `designId` — in one call. Without it, poll `carousel status <embedPostId>` until `COMPLETED`, then `carousel output <embedPostId>`.
+## Credits & Pricing
 
-### JSON everywhere + exit codes
-Success → JSON on **stdout**, exit `0`. Failure → `{ "success": false, "error": { "message": ... } }` on **stderr**, exit `1`. Parse stdout; on failure read `.error.message`.
+The Embed API requires a **paid subscription** — there is no free tier, and free accounts cannot call the API. See **https://postnitro.ai/plans** for current plans and credit allowances.
 
-### Inline JSON vs `--file`
-`carousel import` (`--slides`), `brand create/update` (`--data`), and `schedule`/`generate-and-schedule` (`--post-content`, `--selected-accounts`, `--*-post-settings`) accept JSON inline. Where a command also takes `--file`, the **inline flag wins**. Use single quotes around JSON in the shell.
-
-### postContent (captions)
-`--post-content` is a JSON object keyed by platform. Recognized keys: `common`, `linkedin`, `instagram`, `tiktok`, `facebook`, `threads`. At least one non-empty caption is required unless a `--design-id` is set. Hashtags are auto-extracted.
-
-### Platform settings shapes
-- LinkedIn: `{"postType":"carousel|document|image|reel","postTitle":"..."}` — `document` needs a 5–90 char `postTitle` (PDF carousels usually post as `document`)
-- Instagram: `{"postType":"carousel|image|reel","postAsStory":false}`
-- TikTok: `{"postType":"carousel|reel","privacyLevel":"PUBLIC_TO_EVERYONE|MUTUAL_FOLLOW_FRIENDS|SELF_ONLY","canComment":true,"isBrandedContent":false,"isYourBrand":false,"isThirdPartyBrand":false,"isAIGeneratedContent":true}`
-- Threads: `{"postType":"carousel|image|reel"}`
-- Reel timing: `--post-settings '{"videoDuration":30,"audioId":"..."}'`
-
-### Defaults resolution
-Each of templateId/brandId/presetId/responseType resolves as: **explicit flag → saved default (`defaults set`) → auto-select** (when exactly one candidate exists). Otherwise the command errors and lists the available IDs.
-
-### Slide format (import)
-Exactly one `starting_slide` (first), ≥1 `body_slide`, exactly one `ending_slide` (last). Fields: `type` (required), `heading` (required), `sub_heading`, `description`, `image`, `background_image`, `cta_button`, `layoutType` (`default`|`infographic`), `layoutConfig` (infographic only; max 3 columns). Run `postnitro carousel import-template` for the full rules.
-
-### DRAFT vs SCHEDULED
-`--status DRAFT` saves without publishing. `--status SCHEDULED` creates a **live** post that will publish at `--scheduled-at`. `scheduledAt` must be a **future** ISO-8601 datetime (trailing `Z`). Confirm time and account with the user before using `SCHEDULED`.
-
----
-
-## Platform-Specific Examples
-
-### LinkedIn (PDF carousels post as documents)
-```bash
-postnitro schedule create --status SCHEDULED --scheduled-at "2026-12-31T12:00:00Z" \
-  --design-id <designId> --selected-accounts '["linkedin-account-id"]' \
-  --linkedin-post-settings '{"postType":"document","postTitle":"My carousel title"}' \
-  --post-content '{"common":"LinkedIn caption #build"}'
-```
-
-### Instagram
-```bash
-postnitro schedule create --status SCHEDULED --scheduled-at "2026-12-31T12:00:00Z" \
-  --design-id <designId> --selected-accounts '["instagram-account-id"]' \
-  --instagram-post-settings '{"postType":"carousel","postAsStory":false}' \
-  --post-content '{"instagram":"Caption #hashtag"}'
-```
-
-### TikTok
-```bash
-postnitro schedule create --status SCHEDULED --scheduled-at "2026-12-31T12:00:00Z" \
-  --design-id <designId> --selected-accounts '["tiktok-account-id"]' \
-  --tiktok-post-settings '{"postType":"carousel","privacyLevel":"PUBLIC_TO_EVERYONE","canComment":true,"isBrandedContent":false,"isYourBrand":false,"isThirdPartyBrand":false,"isAIGeneratedContent":true}' \
-  --post-content '{"tiktok":"Caption #fyp"}'
-```
-
-### Threads
-```bash
-postnitro schedule create --status SCHEDULED --scheduled-at "2026-12-31T12:00:00Z" \
-  --design-id <designId> --selected-accounts '["threads-account-id"]' \
-  --threads-post-settings '{"postType":"carousel"}' \
-  --post-content '{"threads":"Caption"}'
-```
-
----
+Approximate usage cost (observed):
+- Content import: ~1 credit per slide
+- AI generation: ~2 credits per slide
 
 ## Supporting Resources
 
@@ -318,61 +186,45 @@ postnitro schedule create --status SCHEDULED --scheduled-at "2026-12-31T12:00:00
 - **[PLATFORM_SETTINGS.md](https://github.com/postnitro/postnitro-agent/blob/main/PLATFORM_SETTINGS.md)** — LinkedIn/Instagram/TikTok/Threads settings schemas
 - **[FEATURES.md](https://github.com/postnitro/postnitro-agent/blob/main/FEATURES.md)** — full feature list
 - **[PROJECT_STRUCTURE.md](https://github.com/postnitro/postnitro-agent/blob/main/PROJECT_STRUCTURE.md)** — code architecture
-- **[PUBLISHING.md](https://github.com/postnitro/postnitro-agent/blob/main/PUBLISHING.md)** — npm release guide
 - **[examples/EXAMPLES.md](https://github.com/postnitro/postnitro-agent/blob/main/examples/EXAMPLES.md)** + **[examples/](https://github.com/postnitro/postnitro-agent/tree/main/examples)** — ready-to-use slide JSON and a runnable workflow script
 - Per-command help: `postnitro <command> <subcommand> --help`
-
----
-
-## Common Gotchas
-
-1. **Not authenticated** — run `postnitro auth status`; set a key before anything else.
-2. **Scheduling with `embedPostId`** — ⚠️ use the **`designId`** from `--wait`/`carousel output` (Hard Rule 2).
-3. **`Scheduled at is in the past`** — `--scheduled-at` must be a future ISO-8601 datetime with a trailing `Z`.
-4. **`--<flag> must be valid JSON`** — wrap JSON in single quotes; check for stray commas/quotes.
-5. **`Missing --brand-id ... multiple candidates`** — pass the ID or save a default with `defaults set`.
-6. **LinkedIn `document` rejected** — `postType:"document"` needs a 5–90 char `postTitle`.
-7. **Empty post** — a scheduled post needs either `--design-id` or non-empty `--post-content`.
-8. **Destructive commands** — `social disconnect` and `schedule delete` require `--yes`.
-9. **`SCHEDULED` publishes live** — use `DRAFT` when unsure; confirm time/account first.
-10. **`npm run dev`** — put `--` before CLI args (`npm run dev -- carousel generate ...`).
-
----
 
 ## Quick Reference
 
 ```bash
-# ⚠️ AUTHENTICATE FIRST
-postnitro auth status                                              # Check auth
-postnitro auth set-key pn-xxxx                                     # Save key
-export POSTNITRO_API_KEY=pn-xxxx                                   # Or env var
+# Auth (do this first)
+postnitro auth set-key pn-xxxx | postnitro auth status | export POSTNITRO_API_KEY=pn-xxxx
 
-# Discovery
-postnitro template list                                           # Template IDs
-postnitro brand list                                              # Brand IDs
-postnitro preset list                                             # AI preset IDs
-postnitro social list                                             # Social account IDs
-postnitro defaults set --template-id <id> --brand-id <id> --preset-id <id>
+# Discover + defaults
+postnitro template list | brand list | preset list | social list
+postnitro defaults set --template-id <id> --brand-id <id> --preset-id <id> --response-type PDF
 
-# Create
-postnitro carousel generate --context "topic" --type text --wait  # AI generate
-postnitro carousel import --file ./slides.json --wait             # Import from file
-postnitro carousel import --slides '{"slides":[...]}' --wait      # Import inline
-postnitro carousel status <embedPostId>                           # Progress
-postnitro carousel output <embedPostId>                           # Output + designId
+# Create (async — use --wait; result has designId)
+postnitro carousel generate --context "topic|url" --type text|article|x [--instructions "..."] --wait
+postnitro carousel import (--slides '{"slides":[...]}' | --file ./slides.json) --wait
+postnitro carousel status <embedPostId>        # if not using --wait
+postnitro carousel output <embedPostId>        # file URLs + designId
 
-# Schedule (date REQUIRED, must be future; use designId not embedPostId)
-postnitro schedule create --status SCHEDULED --scheduled-at "<iso>" --design-id <id> \
+# Schedule (date REQUIRED + future; use designId, not embedPostId)
+postnitro schedule create --status SCHEDULED|DRAFT --scheduled-at "<iso>" --design-id <id> \
   --selected-accounts '["<id>"]' --linkedin-post-settings '{"postType":"document","postTitle":"..."}' \
   --post-content '{"common":"caption"}'
-postnitro schedule list --from "<date>" --to "<date>"             # List
-postnitro schedule get <id>                                       # Get one
-postnitro schedule delete <id> --yes                              # Delete
+postnitro schedule list --from "<date>" --to "<date>" | get <id> | delete <id> --yes
 
 # One-shot
 postnitro generate-and-schedule --context "topic" --status SCHEDULED --scheduled-at "<iso>" ...
-
-# Help
-postnitro --help
-postnitro schedule create --help
 ```
+
+## Tips for the Agent
+
+- Always confirm authentication (`postnitro auth status`) before running any other command. Never fabricate an API key — ask the user.
+- Prefer `--wait` so one call returns the finished output and `designId`.
+- Discover IDs with the `list` commands; save workspace defaults with `defaults set` so later calls stay short.
+- **Schedule with the `designId`, not the `embedPostId`.**
+- For `--type article`/`x`, `--context` must be a URL. For plain text, use `--type text`.
+- Default `responseType` is PDF — pass `--response-type PNG` when the user wants individual slide images.
+- `--scheduled-at` must be a **future** ISO-8601 datetime (trailing `Z`).
+- `status: SCHEDULED` creates a **live** post that will publish — confirm the time and account with the user, or use `DRAFT` when unsure.
+- Parse stdout as JSON; on failure read `.error.message` from stderr and fix the inputs.
+- Warn about credit costs before large batches (AI generation is ~2× the cost of import).
+- If the user doesn't specify a platform, suggest LinkedIn (most common carousel use case) and remember PDF carousels post there as `document`.

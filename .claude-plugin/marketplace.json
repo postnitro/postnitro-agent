@@ -5,13 +5,13 @@
     "email": "muneeb@postnitro.ai"
   },
   "metadata": {
-    "description": "PostNitro carousel generation and social scheduling skill for AI agents",
+    "description": "Create on-brand social carousels and schedule them across LinkedIn, Instagram, TikTok, and Threads.",
     "version": "0.1.0"
   },
   "plugins": [
     {
       "name": "postnitro",
-      "description": "AI-carousel generation and social scheduling CLI — generate carousels from a topic/article/X post or import your own slides, apply brand kits, and schedule to LinkedIn, Instagram, TikTok, and Threads",
+      "description": "Create on-brand social media carousels and schedule them to LinkedIn, Instagram, TikTok, and Threads — generate from a topic, article, or X thread, or import your own slides. Scriptable from the CLI.",
       "source": "./",
       "strict": false,
       "skills": [
