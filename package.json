@@ -1,6 +1,6 @@
 {
   "name": "@postnitro/cli",
-  "version": "0.1.0",
+  "version": "1.0.1",
   "description": "Command-line interface for AI agents and scripts to generate and manage PostNitro content via the PostNitro Embed API.",
   "type": "module",
   "bin": {

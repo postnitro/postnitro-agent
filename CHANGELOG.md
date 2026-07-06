@@ -5,6 +5,22 @@ All notable changes to the PostNitro CLI are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2026-07-06
+
+Aligns the npm version with the ClawHub skill (1.0.0) as a patch. No CLI code changes — `dist/` is unchanged from 0.1.0; this release is docs, skill packaging, and metadata.
+
+### Added
+- Deep-dive docs: `QUICK_START`, `HOW_TO_RUN`, `PLATFORM_SETTINGS`, `PROJECT_STRUCTURE`, `FEATURES`, `PUBLISHING`.
+- Self-contained skill folder `skills/postnitro/` with `examples/` and `references/cli-reference.md`.
+
+### Changed
+- Repackaged as a Claude Code skill/plugin; rewrote skill + README messaging to be outcome-led and consistent across all surfaces.
+- Renamed the repository to `postnitro-agent`; updated `repository`/`homepage` metadata.
+- Corrected pricing docs: the Embed API requires a paid subscription (no free tier).
+
+### Security
+- Added credential-storage, destructive-command (`social disconnect` / `schedule delete`), and scope ("when not to use") warnings per the ClawHub security audit; documented that the skill runs no background processes or persistence.
+
 ## [0.1.0] - 2026-07-03
 
 ### Added

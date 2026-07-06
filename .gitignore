@@ -144,3 +144,7 @@ vite.config.ts.timestamp-*
 
 # macOS
 .DS_Store
+
+# Local reference folders / audit exports (not part of the package)
+postnitro-carousel-skill/
+postnitro-1.0.0-security-audit/
