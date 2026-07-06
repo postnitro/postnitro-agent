@@ -1,6 +1,6 @@
 ---
 name: postnitro
-description: Create on-brand social media carousels and schedule them to LinkedIn, Instagram, TikTok, and Threads from a single command. Turn a topic, article, or X thread into a finished multi-slide post — or import your own slides — then publish or draft it automatically. Fully scriptable (JSON in, JSON out), so an AI agent can run the entire create-to-schedule workflow. Use this skill whenever the user wants to create a carousel, slide post, or multi-slide content, repurpose an article, blog post, or X thread into slides, or automate and schedule social media posts. Requires a PostNitro API key.
+description: Create on-brand social media carousels and schedule them to LinkedIn, Instagram, TikTok, and Threads from a single command. Turn a topic, article, or X thread into a finished multi-slide post — or import your own slides — then publish or draft it automatically. Fully scriptable (JSON in, JSON out), so an AI agent can run the entire create-to-schedule workflow. Use this skill whenever the user wants to create a carousel, slide post, or multi-slide content, repurpose an article, blog post, or X thread into slides, or automate and schedule social media posts. Use it to create and schedule content through PostNitro, not as a general social-media strategy advisor. Requires a PostNitro API key.
 homepage: https://postnitro.ai
 metadata: {"openclaw":{"emoji":"🎠","primaryEnv":"POSTNITRO_API_KEY","requires":{"bins":[],"env":["POSTNITRO_API_KEY"]}}}
 ---
@@ -32,6 +32,10 @@ PostNitro creates on-brand social media carousels and schedules them across Link
 | `POSTNITRO_API_BASE_URL` | No | Override API endpoint (default `https://embed-api.postnitro.ai`) |
 
 > **Key rule:** `carousel generate`/`import` return an **`embedPostId`** (the async job). To *schedule* the result you need its **`designId`** (from the `--wait` output or `carousel output`). Never pass an `embedPostId` to `schedule`.
+
+> **Security:** `auth set-key` stores your API key in plaintext at `~/.postnitro-cli/config.json`. Restrict its file permissions and avoid shared or untrusted machines; run `auth clear` to remove it. This skill runs **no background processes, cron jobs, or startup scripts** — the only local state is the API key and saved defaults, both disclosed above.
+
+> **When NOT to use:** as a general social-media strategy advisor when no content is being produced. *(PostNitro composes with other tools — e.g., create a carousel here, then schedule it elsewhere — so pairing it with another scheduler is fine.)*
 
 ## Core Workflow
 
@@ -75,7 +79,7 @@ postnitro carousel status <embedPostId>   # progress + step logs; poll until COM
 postnitro carousel output <embedPostId>   # final file URL(s) + designId
 ```
 
-Output is a PDF (single URL) or PNG (one URL per slide), in `data`.
+Output is a PDF (single URL) or PNG (one URL per slide), in `data`. Those file URLs plus the `designId` can be handed to another tool — e.g. a different scheduler — to publish on platforms PostNitro doesn't cover.
 
 ### 4. Schedule the design to social accounts
 

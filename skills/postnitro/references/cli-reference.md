@@ -22,6 +22,8 @@ postnitro auth status          # { configured, source, apiKey (masked) }
 postnitro auth clear           # remove saved key
 ```
 
+> **Security:** `auth set-key` stores the API key in **plaintext** at `~/.postnitro-cli/config.json`. Restrict its file permissions (`chmod 600`), avoid shared or untrusted machines, and run `auth clear` to remove it. In CI, prefer `--api-key` or the `POSTNITRO_API_KEY` env var over the saved file.
+
 ## defaults
 
 ```
@@ -66,6 +68,8 @@ postnitro social get <id>
 postnitro social disconnect <id> --yes # destructive
 ```
 
+> **Destructive:** `social disconnect` removes the linked social account from your workspace. Scheduled posts targeting it will fail to publish, and restoring access requires reconnecting and re-authenticating. Requires `--yes`.
+
 ## schedule
 
 ```
@@ -80,6 +84,7 @@ postnitro schedule get <id>
 postnitro schedule update <id> ...same flags as create...   # REPLACES state
 postnitro schedule delete <id> --yes
 ```
+- **`schedule delete` is destructive:** it permanently cancels and removes the scheduled post — this cannot be undone. Requires `--yes`.
 - Requires either `--design-id` or non-empty `--post-content`.
 - `--scheduled-at` must be a **future** ISO-8601 datetime (trailing `Z`).
 - Inline JSON flags override the same field in `--file`.
