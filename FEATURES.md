@@ -7,11 +7,15 @@ What the PostNitro CLI can do.
 - **Import your own slides** from a file (`--file`) or inline JSON (`--slides`) — a bare array or `{ "slides": [...] }`.
 - **`carousel import-template`** prints the authoritative slide schema and rules.
 - **Infographic slides** with multi-column `layoutConfig` (up to 3 columns).
-- **PDF or PNG** output (`--response-type`).
+- **PDF, PNG, or DESIGN** output (`--response-type`). `DESIGN` skips rendering and just creates the editable design (returns `designId` + `editorUrl`, no file).
+
+## Single-image posts
+- **`image generate` / `image import`** create a single-image post (mirrors the `carousel` commands). Import takes **one slide object** (not an array) via `--slide`/`--file`.
+- **`image import-template`** prints the authoritative image-slide schema.
 
 ## Async handling
-- **`--wait`** polls generation/import to completion and returns the final output — including the `designId` — in a single call.
-- Manual tracking via **`carousel status <embedPostId>`** (step logs) and **`carousel output <embedPostId>`**.
+- **`--wait`** polls generation/import to completion and returns the final output — including the `designId` and `editorUrl` — in a single call.
+- Manual tracking via **`carousel`/`image status <embedPostId>`** (step logs) and **`carousel`/`image output <embedPostId>`**.
 
 ## Brand kits
 - **List / get / create / update** brand kits (logo, name, handle stamped on carousels).

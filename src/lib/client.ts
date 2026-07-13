@@ -1,7 +1,7 @@
 import type {
   PostNitroApiResponse,
-  GenerateCarouselRequest,
-  ImportCarouselRequest,
+  GenerateRequest,
+  ImportRequest,
   InitiateResponseData,
   PostStatusData,
   PostOutputData,
@@ -76,11 +76,11 @@ export class PostNitroClient {
   // Carousel creation
   // ============================================================
 
-  initiateGenerate(request: GenerateCarouselRequest): Promise<PostNitroApiResponse<InitiateResponseData>> {
+  initiateGenerate(request: GenerateRequest): Promise<PostNitroApiResponse<InitiateResponseData>> {
     return this.request("/post/initiate/generate", { method: "POST", body: request as unknown as Record<string, unknown> });
   }
 
-  initiateImport(request: ImportCarouselRequest): Promise<PostNitroApiResponse<InitiateResponseData>> {
+  initiateImport(request: ImportRequest): Promise<PostNitroApiResponse<InitiateResponseData>> {
     return this.request("/post/initiate/import", { method: "POST", body: request as unknown as Record<string, unknown> });
   }
 

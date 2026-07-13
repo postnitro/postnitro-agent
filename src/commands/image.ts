@@ -2,57 +2,86 @@ import { Command } from "commander";
 import { printResult, action } from "../lib/output.js";
 import { clientFor, resolveDefaultsFor, summarizeOutput, registerPostInspectionCommands } from "../lib/generation.js";
 import { readJsonFile } from "../lib/json-file.js";
-import type { Slide } from "../lib/types.js";
+import type { ImageSlide } from "../lib/types.js";
 
-/** Resolves the slides array from inline --slides JSON (wins) or a --file path; accepts a bare array or `{ slides: [...] }`. */
-async function resolveSlides(opts: Record<string, any>): Promise<Slide[]> {
+const IMAGE_SLIDE_FIELDS = [
+  "heading",
+  "sub_heading",
+  "description",
+  "cta_button",
+  "image",
+  "background_image",
+  "layoutType",
+  "layoutConfig",
+] as const;
+
+/**
+ * Resolves the single IMAGE slide object from inline --slide JSON (wins) or a --file path.
+ * Accepts a bare object or a `{ slides: {...} }` wrapper. Rejects arrays — those are CAROUSEL-only.
+ */
+async function resolveImageSlide(opts: Record<string, any>): Promise<ImageSlide> {
   let parsed: unknown;
-  if (opts.slides !== undefined) {
+  if (opts.slide !== undefined) {
     try {
-      parsed = JSON.parse(opts.slides);
+      parsed = JSON.parse(opts.slide);
     } catch (e) {
-      throw new Error(`--slides must be valid JSON: ${(e as Error).message}`);
+      throw new Error(`--slide must be valid JSON: ${(e as Error).message}`);
     }
   } else if (opts.file) {
     parsed = await readJsonFile<unknown>(opts.file);
   } else {
-    throw new Error("Provide slides via --slides '<json>' or --file <path>.");
+    throw new Error("Provide the image slide via --slide '<json>' or --file <path>.");
   }
-  const slides = Array.isArray(parsed) ? parsed : (parsed as { slides?: unknown })?.slides;
-  if (!Array.isArray(slides) || slides.length < 3) {
-    throw new Error("Slides must be an array with at least 3 entries (starting_slide, body_slide(s), ending_slide).");
+
+  const slide =
+    parsed && typeof parsed === "object" && !Array.isArray(parsed) && "slides" in parsed
+      ? (parsed as { slides?: unknown }).slides
+      : parsed;
+
+  if (Array.isArray(slide)) {
+    throw new Error("An IMAGE post takes a single slide object, not an array. (Arrays are only for `carousel import`.)");
   }
-  return slides as Slide[];
+  if (!slide || typeof slide !== "object") {
+    throw new Error("The image slide must be a JSON object with at least a `heading`.");
+  }
+  const heading = (slide as Record<string, unknown>).heading;
+  if (typeof heading !== "string" || !heading.trim()) {
+    throw new Error("The image slide requires a non-empty `heading`.");
+  }
+  const invalid = Object.keys(slide as Record<string, unknown>).filter(
+    (k) => !(IMAGE_SLIDE_FIELDS as readonly string[]).includes(k)
+  );
+  if (invalid.length) {
+    throw new Error(`Invalid image slide field(s): ${invalid.join(", ")}. Allowed: ${IMAGE_SLIDE_FIELDS.join(", ")}.`);
+  }
+  return slide as ImageSlide;
 }
 
-export function registerCarouselCommands(program: Command): void {
-  const carousel = program.command("carousel").description("Generate, import, and inspect carousel posts");
+export function registerImageCommands(program: Command): void {
+  const image = program.command("image").description("Generate, import, and inspect single-image posts");
 
-  carousel
+  image
     .command("import-template")
-    .description("Print the exact slide structure and rules required by `carousel import`")
+    .description("Print the exact slide object and rules required by `image import`")
     .action(
       action(async () => {
         printResult({
           rules: {
-            "1_starting_slide": "Exactly 1 slide with type 'starting_slide' — MUST be the first slide",
-            "2_body_slides": "At least 1 slide with type 'body_slide' — place between starting and ending",
-            "3_ending_slide": "Exactly 1 slide with type 'ending_slide' — MUST be the last slide",
-            "4_infographic_columns": "Max 3 columns when using infographic layoutType",
-            "5_cyclical_infographic": "When columnDisplay is 'cycle', put ALL data in the FIRST column only",
-            "6_infographic_replaces_image": "Setting layoutType to 'infographic' replaces the image field",
-            "7_infographic_ids_required": "Every layoutConfig column and content item needs a caller-provided `id` — the API does not generate them",
+            "1_single_object": "IMAGE takes a SINGLE slide object — not an array (arrays are CAROUSEL-only)",
+            "2_heading_required": "`heading` is required; every other field is optional",
+            "3_allowed_fields_only": `Only these fields are allowed: ${IMAGE_SLIDE_FIELDS.join(", ")} (any other field is rejected)`,
+            "4_infographic_optional": "Set layoutType to 'infographic' (with layoutConfig) to render a data infographic instead of a plain image",
+            "5_infographic_ids_required": "Every layoutConfig column and content item needs a caller-provided `id` — the API does not generate them",
           },
           slide_fields: {
-            type: "(required) 'starting_slide' | 'body_slide' | 'ending_slide'",
             heading: "(required) Main heading text",
             sub_heading: "(optional) Subtitle text",
             description: "(optional) Description / body text",
-            image: "(optional) Image URL — ignored if layoutType is 'infographic'",
-            background_image: "(optional) Background image URL",
             cta_button: "(optional) Call-to-action button text",
+            image: "(optional) Image URL",
+            background_image: "(optional) Background image URL",
             layoutType: "(optional) 'default' or 'infographic'",
-            layoutConfig: "(optional, required if layoutType is 'infographic') See infographic_config below",
+            layoutConfig: "(optional, used when layoutType is 'infographic') See infographic_config below",
           },
           infographic_config: {
             hasHeader: "true | false (default true)",
@@ -76,18 +105,20 @@ export function registerCarouselCommands(program: Command): void {
               },
             ],
           },
-          example_slides: [
-            { type: "starting_slide", heading: "10 Digital Marketing Tips", sub_heading: "For Small Businesses", description: "Boost your online presence.", cta_button: "Swipe to learn more →" },
-            { type: "body_slide", heading: "Tip 1: Know Your Audience", description: "Research your target demographic.", image: "https://example.com/audience.jpg" },
-            { type: "ending_slide", heading: "Ready to Grow?", sub_heading: "Start today", description: "Follow us for more.", cta_button: "Visit Our Website" },
-          ],
+          example_slide: {
+            heading: "Welcome!",
+            sub_heading: "My Awesome Subtitle",
+            description: "This is how you start with a bang.",
+            cta_button: "Learn more",
+            background_image: "https://images.pexels.com/photos/33210609/pexels-photo-33210609.jpeg",
+          },
         });
       })
     );
 
-  carousel
+  image
     .command("generate")
-    .description("Generate a carousel post using PostNitro's AI engine")
+    .description("Generate a single-image post using PostNitro's AI engine")
     .requiredOption("--context <text>", "Context/prompt for AI generation (or article/post URL, depending on --type)")
     .option("--type <type>", "AI generation type: text | article | x", "text")
     .option("--instructions <text>", "Additional instructions for the AI")
@@ -106,7 +137,7 @@ export function registerCarouselCommands(program: Command): void {
         }
 
         const initResponse = await client.initiateGenerate({
-          postType: "CAROUSEL",
+          postType: "IMAGE",
           templateId: defaults.templateId,
           brandId: defaults.brandId,
           presetId: defaults.presetId,
@@ -122,7 +153,7 @@ export function registerCarouselCommands(program: Command): void {
             embedPostId,
             status: initResponse.data.status,
             usedDefaults: defaults,
-            nextStep: `Use \`postnitro carousel status ${embedPostId}\` to monitor progress.`,
+            nextStep: `Use \`postnitro image status ${embedPostId}\` to monitor progress.`,
           });
           return;
         }
@@ -133,11 +164,11 @@ export function registerCarouselCommands(program: Command): void {
       })
     );
 
-  carousel
+  image
     .command("import")
-    .description("Create a carousel from your own slide content (see `carousel import-template` for the required format)")
-    .option("--file <path>", "Path to a JSON file containing a `slides` array (or a bare array)")
-    .option("--slides <json>", "Slides as inline JSON — a bare array or {\"slides\":[...]}. Overrides --file.")
+    .description("Create a single-image post from your own content (see `image import-template` for the required format)")
+    .option("--file <path>", "Path to a JSON file containing a single slide object (or a `{ slides: {...} }` wrapper)")
+    .option("--slide <json>", "The slide as inline JSON — a single object. Overrides --file.")
     .option("--template-id <id>", "Template ID (falls back to saved default, or auto-selects if only one exists)")
     .option("--brand-id <id>", "Brand ID (falls back to saved default, or auto-selects if only one exists)")
     .option("--response-type <type>", "Output format: PDF | PNG | DESIGN (DESIGN skips rendering)")
@@ -146,17 +177,17 @@ export function registerCarouselCommands(program: Command): void {
     .action(
       action(async (opts, cmd: Command) => {
         const { apiKey, client } = await clientFor(cmd);
-        const slides = await resolveSlides(opts);
+        const slide = await resolveImageSlide(opts);
 
         const defaults = await resolveDefaultsFor(client, apiKey, opts, false);
 
         const initResponse = await client.initiateImport({
-          postType: "CAROUSEL",
+          postType: "IMAGE",
           templateId: defaults.templateId,
           brandId: defaults.brandId,
           responseType: defaults.responseType,
           requestorId: opts.requestorId,
-          slides,
+          slides: slide,
         });
         const embedPostId = initResponse.data.embedPostId;
 
@@ -166,7 +197,7 @@ export function registerCarouselCommands(program: Command): void {
             embedPostId,
             status: initResponse.data.status,
             usedDefaults: defaults,
-            nextStep: `Use \`postnitro carousel status ${embedPostId}\` to monitor progress.`,
+            nextStep: `Use \`postnitro image status ${embedPostId}\` to monitor progress.`,
           });
           return;
         }
@@ -177,5 +208,5 @@ export function registerCarouselCommands(program: Command): void {
       })
     );
 
-  registerPostInspectionCommands(carousel, "carousel");
+  registerPostInspectionCommands(image, "image");
 }

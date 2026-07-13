@@ -5,6 +5,21 @@ All notable changes to the PostNitro CLI are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-07-13
+
+Tracks the Embed API changes (IMAGE posts, `DESIGN` response type, `editorUrl`, infographic layout on images).
+
+### Added
+- `image generate | import | status | output | import-template` — single-image posts, mirroring the `carousel` commands. `image import` takes a **single slide object** (via `--slide`/`--file`), not an array, and supports the infographic layout (`layoutType`/`layoutConfig`).
+- `DESIGN` as a `--response-type` value — creates the editable design without rendering a PDF/PNG (returns `designId` + `editorUrl` only). Accepted anywhere `--response-type` is (generate/import, `image`, `generate-and-schedule`, `defaults set`).
+- `editorUrl` (deep link to open the design in the editor) surfaced in all generate/import/output results.
+- `--post-type CAROUSEL|IMAGE` on `generate-and-schedule`.
+
+### Changed
+- `--response-type` values are now validated/normalized (case-insensitive) to `PDF`/`PNG`/`DESIGN`; invalid values fail fast with a clear error.
+- The CLI still defaults `--response-type` to `PDF` and always sends it explicitly, so it is unaffected by the API's new `DESIGN` default for omitted values.
+- `carousel output` now reports `aspectRatio`/`editorUrl` and omits `data`/`mimeType`/`outputType` for `DESIGN` responses.
+
 ## [1.0.1] - 2026-07-06
 
 Aligns the npm version with the ClawHub skill (1.0.0) as a patch. No CLI code changes — `dist/` is unchanged from 0.1.0; this release is docs, skill packaging, and metadata.

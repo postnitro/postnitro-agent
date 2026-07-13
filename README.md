@@ -141,9 +141,32 @@ The slides value can be a bare array or `{ "slides": [...] }`. Complete examples
 - `--instructions <text>` — extra guidance for the AI (generate only)
 - `--slides <json>` / `--file <path>` — slide content (import only)
 - `--template-id <id>` / `--brand-id <id>` / `--preset-id <id>` — override saved defaults (`--preset-id` is generate only)
-- `--response-type PDF|PNG` — output format (default `PDF`)
+- `--response-type PDF|PNG|DESIGN` — output format (default `PDF`). `DESIGN` skips rendering and only creates the editable design (no file), returning just `designId` + `editorUrl` — faster when you only need to schedule or edit.
 - `--requestor-id <id>` — optional custom tracking ID
 - `--wait` — poll until completion and return the final output in one call
+
+---
+
+### Creating Single-Image Posts
+
+For a single image (not a multi-slide carousel), use the `image` command group — it mirrors `carousel` but produces one image:
+
+```bash
+# See the required slide shape
+postnitro image import-template
+
+# Generate with AI
+postnitro image generate --context "Announce our new scheduling feature" --wait
+
+# Import your own content — a SINGLE slide object (not an array)
+postnitro image import --slide '{"heading":"Welcome!","sub_heading":"Subtitle","cta_button":"Learn more"}' --wait
+
+# Status / output (mirror carousel)
+postnitro image status <embedPostId>
+postnitro image output <embedPostId>
+```
+
+Unlike `carousel import` (an array of typed slides), `image import` takes **one slide object** via `--slide` (or `--file`) with only these fields: `heading` (**required**), `sub_heading`, `description`, `cta_button`, `image`, `background_image`, plus `layoutType`/`layoutConfig` for the infographic layout (same schema as carousels — every column/item needs a caller-provided `id`). All other options (`--template-id`, `--brand-id`, `--response-type`, `--wait`, …) match the carousel commands. The output `editorUrl` opens in the image editor.
 
 ---
 
@@ -153,7 +176,7 @@ Generation is **asynchronous**. `--wait` handles polling for you; otherwise trac
 
 ```bash
 postnitro carousel status <embedPostId>   # generation progress + step logs
-postnitro carousel output <embedPostId>   # final files + designId (once COMPLETED)
+postnitro carousel output <embedPostId>   # final files + designId + editorUrl (once COMPLETED)
 ```
 
 > **`embedPostId` vs `designId`:** `generate`/`import` return an **`embedPostId`** (the job). To *schedule* the finished carousel you need its **`designId`** (from `carousel output` or the `--wait` result) — not the `embedPostId`.
