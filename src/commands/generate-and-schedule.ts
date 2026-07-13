@@ -1,27 +1,28 @@
 import { Command } from "commander";
-import { PostNitroClient, PostNitroApiError, extractDesignId } from "../lib/client.js";
-import { resolveApiKey, resolveGenerationDefaults } from "../lib/config-store.js";
+import { PostNitroApiError, extractDesignId } from "../lib/client.js";
 import { printResult, failWith, action } from "../lib/output.js";
+import { clientFor, resolveDefaultsFor } from "../lib/generation.js";
 import { scheduleWarnings, deriveDocumentTitle } from "../lib/schedule-warnings.js";
 import { addScheduleJsonOptions, resolveScheduleBody } from "../lib/schedule-input.js";
-import type { ScheduledPostRequest } from "../lib/types.js";
+import type { PostType, ScheduledPostRequest } from "../lib/types.js";
 
 /**
- * Convenience command: generates a carousel with AI, waits for it to finish, then
+ * Convenience command: generates a post with AI, waits for it to finish, then
  * creates a scheduled post attaching the resulting design — mirrors the MCP server's
  * postnitro_generate_and_schedule tool.
  */
 export function registerGenerateAndScheduleCommand(program: Command): void {
   const command = program
     .command("generate-and-schedule")
-    .description("Generate a carousel with AI, wait for it, then schedule it. May take 30-180s.")
+    .description("Generate a post with AI, wait for it, then schedule it. May take 30-180s.")
     .requiredOption("--context <text>", "Context/prompt for AI generation")
+    .option("--post-type <type>", "Post kind: CAROUSEL | IMAGE", "CAROUSEL")
     .option("--type <type>", "AI generation type: text | article | x", "text")
     .option("--instructions <text>", "Additional instructions for the AI")
     .option("--template-id <id>", "Template ID (falls back to saved default, or auto-selects if only one exists)")
     .option("--brand-id <id>", "Brand ID (falls back to saved default, or auto-selects if only one exists)")
     .option("--preset-id <id>", "AI preset ID (falls back to saved default, or auto-selects if only one exists)")
-    .option("--response-type <type>", "Output format: PDF | PNG")
+    .option("--response-type <type>", "Output format: PDF | PNG | DESIGN (DESIGN skips rendering)")
     .option("--requestor-id <id>", "Optional custom tracking ID")
     .requiredOption("--status <status>", "'DRAFT' or 'SCHEDULED'")
     .requiredOption("--scheduled-at <iso>", "ISO-8601 datetime, must be in the future")
@@ -30,27 +31,20 @@ export function registerGenerateAndScheduleCommand(program: Command): void {
 
   addScheduleJsonOptions(command).action(
       action(async (opts, cmd: Command) => {
-        const globals = cmd.optsWithGlobals();
-        const apiKey = await resolveApiKey(globals.apiKey);
-        const client = new PostNitroClient(apiKey, globals.baseUrl);
+        const { apiKey, client } = await clientFor(cmd);
 
-        const defaults = await resolveGenerationDefaults(
-          apiKey,
-          opts,
-          {
-            templates: async () => (await client.listTemplates(1, 2)).data.templates.map((t) => ({ id: t.id, label: t.name })),
-            brands: async () => (await client.listBrands(1, 2)).data.brands.map((b) => ({ id: b.id, label: b.name })),
-            presets: async () =>
-              (await client.listAiPresets(1, 2)).data.presets.map((p) => ({ id: p.id, label: `${p.socialPlatform}/${p.tone}` })),
-          },
-          { requirePreset: true }
-        );
+        const postType = String(opts.postType).toUpperCase() as PostType;
+        if (postType !== "CAROUSEL" && postType !== "IMAGE") {
+          throw new Error(`Invalid --post-type "${opts.postType}". Must be CAROUSEL or IMAGE.`);
+        }
+
+        const defaults = await resolveDefaultsFor(client, apiKey, opts, true);
         if (!defaults.presetId) {
           throw new Error("Missing --preset-id. Provide it or save a default via `postnitro defaults set`.");
         }
 
         const initResponse = await client.initiateGenerate({
-          postType: "CAROUSEL",
+          postType,
           templateId: defaults.templateId,
           brandId: defaults.brandId,
           presetId: defaults.presetId,

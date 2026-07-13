@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { readFile, writeFile, mkdir, unlink } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import type { ResponseType } from "./types.js";
 
 const CONFIG_DIR = process.env.POSTNITRO_CONFIG_DIR || join(homedir(), ".postnitro-cli");
 
@@ -9,8 +10,18 @@ export interface UserDefaults {
   templateId?: string;
   brandId?: string;
   presetId?: string;
-  responseType?: "PDF" | "PNG";
+  responseType?: ResponseType;
   updatedAt: string;
+}
+
+/** Validates/uppercases a user-supplied response type. Returns undefined when none was given. */
+export function normalizeResponseType(value: string | undefined | null): ResponseType | undefined {
+  if (value === undefined || value === null) return undefined;
+  const upper = value.toUpperCase();
+  if (upper !== "PDF" && upper !== "PNG" && upper !== "DESIGN") {
+    throw new Error(`Invalid response type "${value}". Must be PDF, PNG, or DESIGN.`);
+  }
+  return upper as ResponseType;
 }
 
 function hashKey(apiKey: string): string {
@@ -79,20 +90,22 @@ export async function setDefaults(apiKey: string, defaults: Omit<UserDefaults, "
  */
 export async function resolveGenerationDefaults(
   apiKey: string,
-  params: { templateId?: string; brandId?: string; presetId?: string; responseType?: "PDF" | "PNG" },
+  params: { templateId?: string; brandId?: string; presetId?: string; responseType?: string },
   fetchCandidates: {
     templates: () => Promise<Array<{ id: string; label: string }>>;
     brands: () => Promise<Array<{ id: string; label: string }>>;
     presets: () => Promise<Array<{ id: string; label: string }>>;
   },
   options: { requirePreset?: boolean } = {}
-): Promise<{ templateId: string; brandId: string; presetId?: string; responseType: "PDF" | "PNG" }> {
+): Promise<{ templateId: string; brandId: string; presetId?: string; responseType: ResponseType }> {
   const saved = await getDefaults(apiKey);
 
   let templateId = params.templateId || saved?.templateId;
   let brandId = params.brandId || saved?.brandId;
   let presetId = params.presetId || saved?.presetId;
-  const responseType = params.responseType || saved?.responseType || "PDF";
+  // The CLI always sends responseType explicitly (default PDF), so the API's new
+  // DESIGN default never applies to us — omitting the flag still yields a rendered file.
+  const responseType = normalizeResponseType(params.responseType) ?? saved?.responseType ?? "PDF";
 
   if (!templateId) templateId = await autoSelectSingle(fetchCandidates.templates, "templateId", "postnitro template list");
   if (!brandId) brandId = await autoSelectSingle(fetchCandidates.brands, "brandId", "postnitro brand list");

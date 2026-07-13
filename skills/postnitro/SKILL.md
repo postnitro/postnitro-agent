@@ -1,6 +1,6 @@
 ---
 name: postnitro
-description: Create on-brand social media carousels and schedule them to LinkedIn, Instagram, TikTok, and Threads from a single command. Turn a topic, article, or X thread into a finished multi-slide post — or import your own slides — then publish or draft it automatically. Fully scriptable (JSON in, JSON out), so an AI agent can run the entire create-to-schedule workflow. Use this skill whenever the user wants to create a carousel, slide post, or multi-slide content, repurpose an article, blog post, or X thread into slides, or automate and schedule social media posts. Use it to create and schedule content through PostNitro, not as a general social-media strategy advisor. Requires a PostNitro API key.
+description: Create on-brand social media carousels and single-image posts and schedule them to LinkedIn, Instagram, TikTok, and Threads from a single command. Turn a topic, article, or X thread into a finished multi-slide post or image — or import your own content — then publish or draft it automatically. Fully scriptable (JSON in, JSON out), so an AI agent can run the entire create-to-schedule workflow. Use this skill whenever the user wants to create a carousel, image post, slide post, or multi-slide content, repurpose an article, blog post, or X thread into slides, or automate and schedule social media posts. Use it to create and schedule content through PostNitro, not as a general social-media strategy advisor. Requires a PostNitro API key.
 homepage: https://postnitro.ai
 metadata: {"openclaw":{"emoji":"🎠","primaryEnv":"POSTNITRO_API_KEY","requires":{"bins":[],"env":["POSTNITRO_API_KEY"]}}}
 ---
@@ -72,6 +72,20 @@ postnitro carousel import --slides '{"slides":[
 
 **Slide rules:** exactly 1 `starting_slide` (first), ≥1 `body_slide`, exactly 1 `ending_slide` (last); `heading` required on every slide. For infographics, set `layoutType: "infographic"` on a body slide (replaces its image with data columns, max 3). Run `postnitro carousel import-template` for the full schema. Ready-to-use: [examples/import-default.json](examples/import-default.json), [examples/import-infographics.json](examples/import-infographics.json).
 
+### 2b. Single-image posts (`image` commands)
+
+For a **single-image** post (not a multi-slide carousel), use the `image` command group — it mirrors `carousel` (`generate`, `import`, `status`, `output`, `import-template`) but produces one image:
+
+```bash
+# AI-generated image post
+postnitro image generate --context "Announce our new scheduling feature" --wait
+
+# Import your own image content — a SINGLE slide object (not an array)
+postnitro image import --slide '{"heading":"Welcome!","sub_heading":"Subtitle","cta_button":"Learn more"}' --wait
+```
+
+Unlike carousel import (an array of typed slides), `image import` takes **one slide object** with only these fields: `heading` (required), `sub_heading`, `description`, `cta_button`, `image`, `background_image`, plus `layoutType`/`layoutConfig` for the infographic layout (same schema as carousels — every column/item needs a caller-provided `id`). Run `postnitro image import-template` for the schema. The output `editorUrl` opens in the image editor.
+
 ### 3. Check status / get output (only if you didn't use `--wait`)
 
 ```bash
@@ -79,7 +93,7 @@ postnitro carousel status <embedPostId>   # progress + step logs; poll until COM
 postnitro carousel output <embedPostId>   # final file URL(s) + designId
 ```
 
-Output is a PDF (single URL) or PNG (one URL per slide), in `data`. Those file URLs plus the `designId` can be handed to another tool — e.g. a different scheduler — to publish on platforms PostNitro doesn't cover.
+Output is a PDF (single URL) or PNG (one URL per slide), in `data`. Those file URLs plus the `designId` can be handed to another tool — e.g. a different scheduler — to publish on platforms PostNitro doesn't cover. The output always includes an **`editorUrl`** — a deep link to open the design in the PostNitro editor. With `--response-type DESIGN` the design is created but **not rendered**, so `data`/`mimeType`/`outputType` are omitted (you still get `designId` and `editorUrl`) — the fastest option when you only need the design/editor link, e.g. for scheduling.
 
 ### 4. Schedule the design to social accounts
 
@@ -171,7 +185,7 @@ done
 7. **Empty post** — a scheduled post needs either `--design-id` or non-empty `--post-content`.
 8. **Destructive commands** — `social disconnect` and `schedule delete` require `--yes`.
 9. **`SCHEDULED` publishes live** — use `DRAFT` when unsure; confirm time/account with the user first.
-10. **Default `responseType` is PDF** — pass `--response-type PNG` for individual slide images.
+10. **`responseType`** — the CLI defaults to `PDF` (pass `--response-type PNG` for individual slide images, or `DESIGN` to skip rendering and only create the design). Note: the underlying API now defaults to `DESIGN` when omitted, but the CLI always sends `PDF` explicitly, so CLI behavior is unchanged.
 11. **Credits vary** — AI generation ≈ 2 credits/slide; content import ≈ 1 credit/slide. Warn before large batches.
 
 ## Credits & Pricing
@@ -206,11 +220,16 @@ postnitro auth set-key pn-xxxx | postnitro auth status | export POSTNITRO_API_KE
 postnitro template list | brand list | preset list | social list
 postnitro defaults set --template-id <id> --brand-id <id> --preset-id <id> --response-type PDF
 
-# Create (async — use --wait; result has designId)
+# Create (async — use --wait; result has designId + editorUrl)
+# --response-type PDF|PNG|DESIGN (DESIGN skips rendering; CLI default is PDF)
 postnitro carousel generate --context "topic|url" --type text|article|x [--instructions "..."] --wait
 postnitro carousel import (--slides '{"slides":[...]}' | --file ./slides.json) --wait
 postnitro carousel status <embedPostId>        # if not using --wait
-postnitro carousel output <embedPostId>        # file URLs + designId
+postnitro carousel output <embedPostId>        # file URLs + designId + editorUrl
+
+# Single-image posts (mirror carousel; import takes ONE slide object, not an array)
+postnitro image generate --context "topic|url" --type text|article|x --wait
+postnitro image import (--slide '{"heading":"..."}' | --file ./slide.json) --wait
 
 # Schedule (date REQUIRED + future; use designId, not embedPostId)
 postnitro schedule create --status SCHEDULED|DRAFT --scheduled-at "<iso>" --design-id <id> \
@@ -229,7 +248,7 @@ postnitro generate-and-schedule --context "topic" --status SCHEDULED --scheduled
 - Discover IDs with the `list` commands; save workspace defaults with `defaults set` so later calls stay short.
 - **Schedule with the `designId`, not the `embedPostId`.**
 - For `--type article`/`x`, `--context` must be a URL. For plain text, use `--type text`.
-- Default `responseType` is PDF — pass `--response-type PNG` when the user wants individual slide images.
+- `responseType` defaults to PDF in the CLI — pass `--response-type PNG` for individual slide images, or `DESIGN` to skip rendering when you only need the `designId`/`editorUrl` (e.g. for scheduling).
 - `--scheduled-at` must be a **future** ISO-8601 datetime (trailing `Z`).
 - `status: SCHEDULED` creates a **live** post that will publish — confirm the time and account with the user, or use `DRAFT` when unsure.
 - Parse stdout as JSON; on failure read `.error.message` from stderr and fix the inputs.

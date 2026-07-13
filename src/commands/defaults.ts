@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { resolveApiKey, getDefaults, setDefaults } from "../lib/config-store.js";
+import { resolveApiKey, getDefaults, setDefaults, normalizeResponseType } from "../lib/config-store.js";
 import { printResult, action } from "../lib/output.js";
 
 export function registerDefaultsCommands(program: Command): void {
@@ -24,7 +24,7 @@ export function registerDefaultsCommands(program: Command): void {
     .option("--template-id <id>", "Default template ID")
     .option("--brand-id <id>", "Default brand ID")
     .option("--preset-id <id>", "Default AI preset ID")
-    .option("--response-type <type>", "Default output format: PDF | PNG")
+    .option("--response-type <type>", "Default output format: PDF | PNG | DESIGN")
     .action(
       action(async (opts, cmd: Command) => {
         if (
@@ -43,7 +43,7 @@ export function registerDefaultsCommands(program: Command): void {
           templateId: opts.templateId,
           brandId: opts.brandId,
           presetId: opts.presetId,
-          responseType: opts.responseType,
+          responseType: normalizeResponseType(opts.responseType),
         });
         printResult({ success: true, message: "Defaults saved.", defaults: saved });
       })

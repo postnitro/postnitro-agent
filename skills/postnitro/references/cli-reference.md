@@ -28,7 +28,7 @@ postnitro auth clear           # remove saved key
 
 ```
 postnitro defaults get
-postnitro defaults set [--template-id <id>] [--brand-id <id>] [--preset-id <id>] [--response-type PDF|PNG]
+postnitro defaults set [--template-id <id>] [--brand-id <id>] [--preset-id <id>] [--response-type PDF|PNG|DESIGN]
 ```
 Requires at least one field. Resolution order per field: explicit flag → saved default → auto-select (when exactly one candidate exists).
 
@@ -49,16 +49,35 @@ postnitro brand update <id> ...same as create...
 ```
 postnitro carousel import-template                 # prints the slide schema + rules
 postnitro carousel generate --context <text> [--type text|article|x] [--instructions <text>]
-                            [--template-id] [--brand-id] [--preset-id] [--response-type PDF|PNG]
+                            [--template-id] [--brand-id] [--preset-id] [--response-type PDF|PNG|DESIGN]
                             [--requestor-id <id>] [--wait]
 postnitro carousel import (--slides <json> | --file <path>)
                           [--template-id] [--brand-id] [--response-type] [--requestor-id] [--wait]
 postnitro carousel status <embedPostId>            # progress + step logs
-postnitro carousel output <embedPostId>            # file URL(s) + designId
+postnitro carousel output <embedPostId>            # file URL(s) + designId + editorUrl
 ```
 - `--type`: `text` (topic/text), `article` (article URL), `x` (X post URL).
-- `--wait`: poll to completion; returns final output incl. `designId`.
+- `--response-type`: `PDF` (default) | `PNG` | `DESIGN`. `DESIGN` skips rendering — no file is produced, output has `designId` + `editorUrl` only.
+- `--wait`: poll to completion; returns final output incl. `designId` and `editorUrl`.
 - `--slides` (inline JSON) overrides `--file`; accepts a bare array or `{ "slides": [...] }`.
+
+## image
+
+Single-image posts. Mirrors `carousel`, but produces one image and `import` takes a **single slide object** (not an array).
+
+```
+postnitro image import-template                    # prints the image-slide schema + rules
+postnitro image generate --context <text> [--type text|article|x] [--instructions <text>]
+                         [--template-id] [--brand-id] [--preset-id] [--response-type PDF|PNG|DESIGN]
+                         [--requestor-id <id>] [--wait]
+postnitro image import (--slide <json> | --file <path>)
+                       [--template-id] [--brand-id] [--response-type] [--requestor-id] [--wait]
+postnitro image status <embedPostId>               # progress + step logs
+postnitro image output <embedPostId>               # file URL(s) + designId + editorUrl
+```
+- `--slide` (inline JSON) overrides `--file`; a **single object** (arrays are rejected — those are CAROUSEL-only). Accepts a bare object or `{ "slides": { ... } }`.
+- Allowed slide fields: `heading` (required), `sub_heading`, `description`, `cta_button`, `image`, `background_image`, plus `layoutType`/`layoutConfig` for the infographic layout. Any other field is rejected.
+- Infographic layout works on IMAGE too — set `layoutType: "infographic"` + `layoutConfig` (same schema as carousel; see below). Every column and content item needs a caller-provided `id`.
 
 ## social
 
@@ -93,11 +112,11 @@ postnitro schedule delete <id> --yes
 
 ```
 postnitro generate-and-schedule --context <text> --status DRAFT|SCHEDULED --scheduled-at <iso>
-                                [ ...all generate flags... ]
+                                [--post-type CAROUSEL|IMAGE] [ ...all generate flags... ]
                                 [--design-id] [--file <json>]
                                 [--post-content] [--selected-accounts] [--*-post-settings] [--post-settings]
 ```
-Generates → waits → schedules in one call. On scheduling failure the error includes the `designId` so you can retry `schedule create` without regenerating.
+Generates → waits → schedules in one call. `--post-type` defaults to `CAROUSEL` (use `IMAGE` for a single-image post). On scheduling failure the error includes the `designId` so you can retry `schedule create` without regenerating.
 
 ---
 
@@ -118,7 +137,7 @@ Keys: `common`, `linkedin`, `instagram`, `tiktok`, `facebook`, `threads`.
 
 ## Slide schema (import)
 
-Exactly one `starting_slide` (first), ≥1 `body_slide`, exactly one `ending_slide` (last).
+For **carousel** import: exactly one `starting_slide` (first), ≥1 `body_slide`, exactly one `ending_slide` (last). For **image** import it's a single object with no `type` field (see the `image` section above).
 
 | Field | Notes |
 |-------|-------|
@@ -132,19 +151,32 @@ Exactly one `starting_slide` (first), ≥1 `body_slide`, exactly one `ending_sli
 | `layoutType` | `default` \| `infographic` |
 | `layoutConfig` | required when `layoutType: "infographic"` |
 
-Infographic `layoutConfig`:
+Infographic `layoutConfig` (works on both carousel and image slides):
 ```json
 {
-  "columnCount": 1,
-  "columnDisplay": "grid",       // "grid" (comparative) or "cycle" (sequential; data in FIRST column only)
-  "displayCounterAs": "none",     // "none" | "counter"
   "hasHeader": true,
+  "columnCount": 1,
+  "displayCounterAs": "counter",  // "counter" (default) | "none"
+  "columnDisplay": "grid",        // "grid" (comparative, default) or "cycle" (sequential; data in FIRST column only)
   "columnData": [
-    { "header": "Column", "content": [ { "title": "Item", "description": "..." } ] }
+    {
+      "id": "col-1",
+      "header": "Column",
+      "content": [
+        {
+          "id": "item-1",
+          "icon": null,
+          "title": "Item",
+          "description": "<p dir=\"ltr\">HTML string</p>",
+          "titleEnabled": true,
+          "descriptionEnabled": true
+        }
+      ]
+    }
   ]
 }
 ```
-Max 3 columns. Setting `layoutType: "infographic"` replaces the slide's `image`.
+Max 3 columns. Setting `layoutType: "infographic"` replaces the slide's `image`. **Every column and content item needs a caller-provided `id`** — the API does not auto-generate them. `description` is an HTML string. Omitted `layoutConfig` fields use the defaults above; if `layoutType` is `infographic` but `layoutConfig` is missing, the slide falls back to the default layout.
 
 ## Environment variables
 

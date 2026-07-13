@@ -15,13 +15,22 @@ export interface AiGenerationConfig {
   instructions?: string;
 }
 
-export interface GenerateCarouselRequest {
-  postType: "CAROUSEL";
+/** Post kind. Must be sent uppercase — the API rejects lowercase values. */
+export type PostType = "CAROUSEL" | "IMAGE";
+
+/**
+ * Output format. `DESIGN` skips rendering (no PDF/PNG artifact) and just creates
+ * the editable design — faster/lighter for scheduling and editor-based flows.
+ */
+export type ResponseType = "PDF" | "PNG" | "DESIGN";
+
+export interface GenerateRequest {
+  postType: PostType;
   requestorId?: string;
   templateId: string;
   brandId: string;
   presetId: string;
-  responseType?: "PDF" | "PNG";
+  responseType?: ResponseType;
   aiGeneration: AiGenerationConfig;
 }
 
@@ -38,16 +47,45 @@ export interface Slide {
 }
 
 export interface InfographicLayoutConfig {
-  columnCount: 1 | 2 | 3;
-  columnDisplay: "cycle" | "grid";
-  displayCounterAs: "none" | "counter";
-  hasHeader: boolean;
+  hasHeader?: boolean;
+  columnCount?: 1 | 2 | 3;
+  displayCounterAs?: "none" | "counter";
+  columnDisplay?: "cycle" | "grid";
   columnData?: InfographicColumnData[];
 }
 
 export interface InfographicColumnData {
+  /** Caller-provided and required — the API stores it as-is (not auto-generated). */
+  id: string;
   header: string;
-  content: Array<{ title: string; description: string }>;
+  content: InfographicContentItem[];
+}
+
+export interface InfographicContentItem {
+  /** Caller-provided and required — the API stores it as-is (not auto-generated). */
+  id: string;
+  title: string;
+  /** HTML string, e.g. `<p dir="ltr">Description</p>`. */
+  description: string;
+  icon?: string | null;
+  titleEnabled?: boolean;
+  descriptionEnabled?: boolean;
+}
+
+/**
+ * A single IMAGE slide. Restricted field set — the API returns a 422 for any
+ * field outside this list (notably `type` is NOT allowed). `layoutType`/`layoutConfig`
+ * ARE allowed, for the infographic layout.
+ */
+export interface ImageSlide {
+  heading: string;
+  sub_heading?: string;
+  description?: string;
+  cta_button?: string;
+  image?: string;
+  background_image?: string;
+  layoutType?: "default" | "infographic";
+  layoutConfig?: InfographicLayoutConfig;
 }
 
 export interface ImportCarouselRequest {
@@ -55,9 +93,23 @@ export interface ImportCarouselRequest {
   requestorId?: string;
   templateId: string;
   brandId: string;
-  responseType?: "PDF" | "PNG";
+  responseType?: ResponseType;
+  /** CAROUSEL takes an array of typed slides (1 starting, ≥1 body, 1 ending). */
   slides: Slide[];
 }
+
+export interface ImportImageRequest {
+  postType: "IMAGE";
+  requestorId?: string;
+  templateId: string;
+  brandId: string;
+  responseType?: ResponseType;
+  /** IMAGE takes a single slide object (not an array). */
+  slides: ImageSlide;
+}
+
+/** Shape is strictly enforced per `postType`: array for CAROUSEL, object for IMAGE. */
+export type ImportRequest = ImportCarouselRequest | ImportImageRequest;
 
 export interface PostStatusData {
   embedPostId: string;
@@ -82,7 +134,7 @@ export interface PostOutputData {
   embedPost: {
     id: string;
     postType: string;
-    responseType: "PNG" | "PDF";
+    responseType: ResponseType;
     status: string;
     credits: number;
     createdAt: string;
@@ -91,10 +143,13 @@ export interface PostOutputData {
   result: {
     designId?: string;
     name: string;
-    size: string;
-    type: string;
-    mimeType: string;
-    data: string | string[];
+    size: { id: string; dimensions: { width: number; height: number } };
+    /** Deep link to open the design in the editor. Null if it can't be resolved. Present for all response types. */
+    editorUrl?: string | null;
+    // Rendered-artifact fields — present only for PDF/PNG. DESIGN omits them.
+    type?: string;
+    mimeType?: string;
+    data?: string | string[];
   };
 }
 
