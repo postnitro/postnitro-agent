@@ -11,6 +11,7 @@ import { registerImageCommands } from "./commands/image.js";
 import { registerSocialCommands } from "./commands/social.js";
 import { registerScheduleCommands } from "./commands/schedule.js";
 import { registerGenerateAndScheduleCommand } from "./commands/generate-and-schedule.js";
+import { registerImportAndScheduleCommand } from "./commands/import-and-schedule.js";
 
 const program = new Command();
 
@@ -20,9 +21,8 @@ program
     "CLI for AI agents and scripts to generate and manage PostNitro content (carousels, brands, scheduling) via the PostNitro Embed API.\n\n" +
       "Every command prints JSON on success (stdout, exit 0) or JSON on failure (stderr, exit 1) — safe to pipe and parse."
   )
-  .version("1.1.0")
-  .option("--api-key <key>", "PostNitro API key (falls back to POSTNITRO_API_KEY env var, then saved config)")
-  .option("--base-url <url>", "Override the PostNitro API base URL (falls back to POSTNITRO_API_BASE_URL env var)");
+  .version("1.2.0")
+  .option("--api-key <key>", "PostNitro API key (falls back to POSTNITRO_API_KEY env var, then saved config)");
 
 registerAuthCommands(program);
 registerDefaultsCommands(program);
@@ -34,5 +34,6 @@ registerImageCommands(program);
 registerSocialCommands(program);
 registerScheduleCommands(program);
 registerGenerateAndScheduleCommand(program);
+registerImportAndScheduleCommand(program);
 
 program.parseAsync(process.argv);

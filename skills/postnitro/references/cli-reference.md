@@ -10,7 +10,6 @@ Available on every command:
 | Flag | Purpose |
 |------|---------|
 | `--api-key <key>` | API key (overrides env/saved config) |
-| `--base-url <url>` | Override API base (default `https://embed-api.postnitro.ai`) |
 | `-V, --version` | Print version |
 | `-h, --help` | Help for any command/subcommand |
 
@@ -60,6 +59,7 @@ postnitro carousel output <embedPostId>            # file URL(s) + designId + ed
 - `--response-type`: `PDF` (default) | `PNG` | `DESIGN`. `DESIGN` skips rendering — no file is produced, output has `designId` + `editorUrl` only.
 - `--wait`: poll to completion; returns final output incl. `designId` and `editorUrl`.
 - `--slides` (inline JSON) overrides `--file`; accepts a bare array or `{ "slides": [...] }`.
+- AI images: add `--generate-images` (+ optional `--image-placement`/`--image-strategy`/`--image-context`) — see [AI image generation](#ai-image-generation-generateimages).
 
 ## image
 
@@ -78,6 +78,24 @@ postnitro image output <embedPostId>               # file URL(s) + designId + ed
 - `--slide` (inline JSON) overrides `--file`; a **single object** (arrays are rejected — those are CAROUSEL-only). Accepts a bare object or `{ "slides": { ... } }`.
 - Allowed slide fields: `heading` (required), `sub_heading`, `description`, `cta_button`, `image`, `background_image`, plus `layoutType`/`layoutConfig` for the infographic layout. Any other field is rejected.
 - Infographic layout works on IMAGE too — set `layoutType: "infographic"` + `layoutConfig` (same schema as carousel; see below). Every column and content item needs a caller-provided `id`.
+- AI images: `--generate-images` (+ optional flags) works here too — see [AI image generation](#ai-image-generation-generateimages).
+
+## AI image generation (`generateImages`)
+
+Opt-in AI image generation, available on **every** generate/import command (carousel and image) and on `generate-and-schedule`. Images are generated and baked into the design before rendering, so they appear in the rendered file and in the editor.
+
+| Flag | Values | Default | Notes |
+|------|--------|---------|-------|
+| `--generate-images` | (boolean) | off | Opt in. Also implied by any flag below. |
+| `--image-context <text>` | string | — | **Required** when generating images: a short visual brief for the image prompts. |
+| `--image-placement <mode>` | `auto` \| `background` \| `in-line` | `auto` | `auto` = AI decides per slide. |
+| `--image-strategy <mode>` | `strategic` \| `all` | `strategic` | `strategic` ≈ 50% of slides; `all` = every eligible slide. |
+
+- `--image-context` is required whenever image generation is enabled — the CLI fails fast if it's missing.
+- The two enums are validated client-side (fails fast on a bad value).
+- **Best-effort:** the post still completes if image generation fails or isn't permitted. With `--wait`, the result includes `imageGeneration` (the `GENERATE_IMAGES` job step); a `FAILED` status there (e.g. free plan, or over the org's AI-image quota) means the post completed without images. Without `--wait`, the step appears in `status` logs.
+- **Credits:** AI images consume the organization's **separate AI-image quota** — the post's slide-based `credits` are unchanged. Free plans cannot generate AI images.
+- Adds latency (real images are rendered); keep polling `status` until `COMPLETED`.
 
 ## social
 
@@ -113,10 +131,28 @@ postnitro schedule delete <id> --yes
 ```
 postnitro generate-and-schedule --context <text> --status DRAFT|SCHEDULED --scheduled-at <iso>
                                 [--post-type CAROUSEL|IMAGE] [ ...all generate flags... ]
+                                [--generate-images --image-context <text> ...]   # optional AI images
                                 [--design-id] [--file <json>]
                                 [--post-content] [--selected-accounts] [--*-post-settings] [--post-settings]
 ```
-Generates → waits → schedules in one call. `--post-type` defaults to `CAROUSEL` (use `IMAGE` for a single-image post). On scheduling failure the error includes the `designId` so you can retry `schedule create` without regenerating.
+Generates → waits → schedules in one call. `--post-type` defaults to `CAROUSEL` (use `IMAGE` for a single-image post). Also accepts the [AI image generation](#ai-image-generation-generateimages) flags. On scheduling failure the error includes the `designId` so you can retry `schedule create` without regenerating.
+
+## import-and-schedule
+
+```
+postnitro import-and-schedule --status DRAFT|SCHEDULED --scheduled-at <iso>
+                              [--post-type CAROUSEL|IMAGE]
+                              (--slides <json> | --slide <json> | --slides-file <path>)
+                              [--template-id] [--brand-id] [--response-type] [--requestor-id]
+                              [--generate-images --image-context <text> ...]   # optional AI images
+                              [--design-id] [--file <json>]
+                              [--post-content] [--selected-accounts] [--*-post-settings] [--post-settings]
+```
+Imports your own content → waits → schedules in one call (the import-side counterpart of `generate-and-schedule`). `--post-type` defaults to `CAROUSEL` — pass `--slides` (array) for CAROUSEL or `--slide` (single object) for IMAGE; `--slides-file` reads either from a file.
+
+> **Flag note:** here `--file` is the **schedule body** (postContent/accounts/settings), matching `generate-and-schedule` — so slide content comes from `--slides` / `--slide` / `--slides-file`, not `--file`.
+
+Also accepts the [AI image generation](#ai-image-generation-generateimages) flags. On scheduling failure the error includes the `designId` so you can retry `schedule create` without re-importing.
 
 ---
 
@@ -183,5 +219,4 @@ Max 3 columns. Setting `layoutType: "infographic"` replaces the slide's `image`.
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `POSTNITRO_API_KEY` | – | API key |
-| `POSTNITRO_API_BASE_URL` | `https://embed-api.postnitro.ai` | API endpoint override |
 | `POSTNITRO_CONFIG_DIR` | `~/.postnitro-cli` | Config/defaults location |

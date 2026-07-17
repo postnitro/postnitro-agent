@@ -5,6 +5,17 @@ All notable changes to the PostNitro CLI are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-07-16
+
+Adds opt-in AI image generation (the Embed API's `generateImages` feature) and fixes the API base URL to the hosted endpoint.
+
+### Added
+- **AI image generation** (opt-in) on all generate/import commands and both one-shot commands: `--generate-images`, `--image-context <text>` (**required** when generating images), `--image-placement auto|background|in-line`, `--image-strategy strategic|all`. Best-effort — `--wait` results surface the `GENERATE_IMAGES` job step as `imageGeneration` (a COMPLETED post can still have a skipped/failed image step, e.g. free plan / over AI-image quota). AI images bill against the org's separate AI-image quota, not the post's slide credits.
+- `import-and-schedule` — one-shot import + schedule, the counterpart to `generate-and-schedule`. Takes `--slides` (carousel array) / `--slide` (single image) / `--slides-file`, plus `--post-type CAROUSEL|IMAGE`, the schedule options, and the AI-image flags. `--file` is the schedule body (as in `generate-and-schedule`). On scheduling failure it returns the `designId` so you can retry without re-importing.
+
+### Removed
+- The `--base-url` global flag and `POSTNITRO_API_BASE_URL` environment variable. The API base URL is now a fixed constant (`https://embed-api.postnitro.ai`) — PostNitro is hosted, not self-hosted, so the endpoint is always the same.
+
 ## [1.1.0] - 2026-07-13
 
 Tracks the Embed API changes (IMAGE posts, `DESIGN` response type, `editorUrl`, infographic layout on images).

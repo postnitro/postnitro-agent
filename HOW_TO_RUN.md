@@ -77,5 +77,4 @@ in order of precedence:
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `POSTNITRO_API_KEY` | – | API key |
-| `POSTNITRO_API_BASE_URL` | `https://embed-api.postnitro.ai` | Override the API endpoint (also `--base-url`) |
 | `POSTNITRO_CONFIG_DIR` | `~/.postnitro-cli` | Where config/defaults are stored |

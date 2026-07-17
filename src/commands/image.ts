@@ -1,61 +1,14 @@
 import { Command } from "commander";
 import { printResult, action } from "../lib/output.js";
-import { clientFor, resolveDefaultsFor, summarizeOutput, registerPostInspectionCommands } from "../lib/generation.js";
-import { readJsonFile } from "../lib/json-file.js";
-import type { ImageSlide } from "../lib/types.js";
-
-const IMAGE_SLIDE_FIELDS = [
-  "heading",
-  "sub_heading",
-  "description",
-  "cta_button",
-  "image",
-  "background_image",
-  "layoutType",
-  "layoutConfig",
-] as const;
-
-/**
- * Resolves the single IMAGE slide object from inline --slide JSON (wins) or a --file path.
- * Accepts a bare object or a `{ slides: {...} }` wrapper. Rejects arrays — those are CAROUSEL-only.
- */
-async function resolveImageSlide(opts: Record<string, any>): Promise<ImageSlide> {
-  let parsed: unknown;
-  if (opts.slide !== undefined) {
-    try {
-      parsed = JSON.parse(opts.slide);
-    } catch (e) {
-      throw new Error(`--slide must be valid JSON: ${(e as Error).message}`);
-    }
-  } else if (opts.file) {
-    parsed = await readJsonFile<unknown>(opts.file);
-  } else {
-    throw new Error("Provide the image slide via --slide '<json>' or --file <path>.");
-  }
-
-  const slide =
-    parsed && typeof parsed === "object" && !Array.isArray(parsed) && "slides" in parsed
-      ? (parsed as { slides?: unknown }).slides
-      : parsed;
-
-  if (Array.isArray(slide)) {
-    throw new Error("An IMAGE post takes a single slide object, not an array. (Arrays are only for `carousel import`.)");
-  }
-  if (!slide || typeof slide !== "object") {
-    throw new Error("The image slide must be a JSON object with at least a `heading`.");
-  }
-  const heading = (slide as Record<string, unknown>).heading;
-  if (typeof heading !== "string" || !heading.trim()) {
-    throw new Error("The image slide requires a non-empty `heading`.");
-  }
-  const invalid = Object.keys(slide as Record<string, unknown>).filter(
-    (k) => !(IMAGE_SLIDE_FIELDS as readonly string[]).includes(k)
-  );
-  if (invalid.length) {
-    throw new Error(`Invalid image slide field(s): ${invalid.join(", ")}. Allowed: ${IMAGE_SLIDE_FIELDS.join(", ")}.`);
-  }
-  return slide as ImageSlide;
-}
+import {
+  clientFor,
+  resolveDefaultsFor,
+  registerPostInspectionCommands,
+  addImageGenerationOptions,
+  resolveGenerateImages,
+  waitAndPrint,
+} from "../lib/generation.js";
+import { resolveImageSlide, IMAGE_SLIDE_FIELDS } from "../lib/slide-input.js";
 
 export function registerImageCommands(program: Command): void {
   const image = program.command("image").description("Generate, import, and inspect single-image posts");
@@ -116,7 +69,7 @@ export function registerImageCommands(program: Command): void {
       })
     );
 
-  image
+  const generate = image
     .command("generate")
     .description("Generate a single-image post using PostNitro's AI engine")
     .requiredOption("--context <text>", "Context/prompt for AI generation (or article/post URL, depending on --type)")
@@ -127,8 +80,8 @@ export function registerImageCommands(program: Command): void {
     .option("--preset-id <id>", "AI preset ID (falls back to saved default, or auto-selects if only one exists)")
     .option("--response-type <type>", "Output format: PDF | PNG | DESIGN (DESIGN skips rendering)")
     .option("--requestor-id <id>", "Optional custom tracking ID")
-    .option("--wait", "Poll until generation completes and print the final output", false)
-    .action(
+    .option("--wait", "Poll until generation completes and print the final output", false);
+  addImageGenerationOptions(generate).action(
       action(async (opts, cmd: Command) => {
         const { apiKey, client } = await clientFor(cmd);
         const defaults = await resolveDefaultsFor(client, apiKey, opts, true);
@@ -144,6 +97,7 @@ export function registerImageCommands(program: Command): void {
           responseType: defaults.responseType,
           requestorId: opts.requestorId,
           aiGeneration: { type: opts.type, context: opts.context, instructions: opts.instructions },
+          generateImages: resolveGenerateImages(opts),
         });
         const embedPostId = initResponse.data.embedPostId;
 
@@ -158,13 +112,11 @@ export function registerImageCommands(program: Command): void {
           return;
         }
 
-        await client.pollUntilComplete(embedPostId);
-        const output = await client.getPostOutput(embedPostId);
-        printResult({ success: true, ...summarizeOutput(output.data), usedDefaults: defaults });
+        await waitAndPrint(client, embedPostId, { usedDefaults: defaults });
       })
     );
 
-  image
+  const importCmd = image
     .command("import")
     .description("Create a single-image post from your own content (see `image import-template` for the required format)")
     .option("--file <path>", "Path to a JSON file containing a single slide object (or a `{ slides: {...} }` wrapper)")
@@ -173,11 +125,11 @@ export function registerImageCommands(program: Command): void {
     .option("--brand-id <id>", "Brand ID (falls back to saved default, or auto-selects if only one exists)")
     .option("--response-type <type>", "Output format: PDF | PNG | DESIGN (DESIGN skips rendering)")
     .option("--requestor-id <id>", "Optional custom tracking ID")
-    .option("--wait", "Poll until generation completes and print the final output", false)
-    .action(
+    .option("--wait", "Poll until generation completes and print the final output", false);
+  addImageGenerationOptions(importCmd).action(
       action(async (opts, cmd: Command) => {
         const { apiKey, client } = await clientFor(cmd);
-        const slide = await resolveImageSlide(opts);
+        const slide = await resolveImageSlide(opts.slide, opts.file, { inline: "--slide", file: "--file" });
 
         const defaults = await resolveDefaultsFor(client, apiKey, opts, false);
 
@@ -188,6 +140,7 @@ export function registerImageCommands(program: Command): void {
           responseType: defaults.responseType,
           requestorId: opts.requestorId,
           slides: slide,
+          generateImages: resolveGenerateImages(opts),
         });
         const embedPostId = initResponse.data.embedPostId;
 
@@ -202,9 +155,7 @@ export function registerImageCommands(program: Command): void {
           return;
         }
 
-        await client.pollUntilComplete(embedPostId);
-        const output = await client.getPostOutput(embedPostId);
-        printResult({ success: true, ...summarizeOutput(output.data), usedDefaults: defaults });
+        await waitAndPrint(client, embedPostId, { usedDefaults: defaults });
       })
     );
 

@@ -13,6 +13,11 @@ What the PostNitro CLI can do.
 - **`image generate` / `image import`** create a single-image post (mirrors the `carousel` commands). Import takes **one slide object** (not an array) via `--slide`/`--file`.
 - **`image import-template`** prints the authoritative image-slide schema.
 
+## AI image generation (opt-in)
+- **`--generate-images`** on any generate/import command (and `generate-and-schedule`) generates AI images and bakes them into the design before rendering.
+- Tune with **`--image-placement`** (`auto`/`background`/`in-line`), **`--image-strategy`** (`strategic`/`all`), and **`--image-context`**.
+- Best-effort: `--wait` surfaces the `GENERATE_IMAGES` step as `imageGeneration`. Uses the org's separate AI-image quota (not slide credits); unavailable on the free plan.
+
 ## Async handling
 - **`--wait`** polls generation/import to completion and returns the final output — including the `designId` and `editorUrl` — in a single call.
 - Manual tracking via **`carousel`/`image status <embedPostId>`** (step logs) and **`carousel`/`image output <embedPostId>`**.
@@ -27,7 +32,7 @@ What the PostNitro CLI can do.
 - Per-platform settings via JSON flags (see [PLATFORM_SETTINGS.md](PLATFORM_SETTINGS.md)).
 - Platform-keyed captions (`--post-content`) with automatic hashtag extraction.
 - **List / get / update / delete** scheduled posts.
-- **`generate-and-schedule`** — generate a carousel and schedule it in one command; on scheduling failure it returns the `designId` so you can retry without regenerating.
+- **One-shot create + schedule** — `generate-and-schedule` (AI-generated) and `import-and-schedule` (your own content) create and schedule in one command; both take `--post-type CAROUSEL|IMAGE` and the AI-image flags. On scheduling failure they return the `designId` so you can retry without re-creating.
 
 ## Discovery & defaults
 - **List** templates, brands, presets, and social accounts.
@@ -43,5 +48,4 @@ What the PostNitro CLI can do.
 
 ## Configuration
 - API key via `--api-key`, `POSTNITRO_API_KEY`, or saved config (`postnitro auth set-key`).
-- Custom endpoint via `--base-url` / `POSTNITRO_API_BASE_URL`.
 - Config location override via `POSTNITRO_CONFIG_DIR`.

@@ -18,9 +18,9 @@ The skill is defined in [`SKILL.md`](SKILL.md) at the repo root (with a copy und
 
 # PostNitro CLI
 
-**Create and schedule on-brand social carousels from the command line.** Built for AI agents and scripts: turn a topic, article, or X thread — or your own slides — into a published LinkedIn, Instagram, TikTok, or Threads post.
+**Create and schedule on-brand social posts — carousels and single images — from the command line.** Built for AI agents and scripts: turn a topic, article, or X thread — or your own content — into a published LinkedIn, Instagram, TikTok, or Threads post.
 
-PostNitro creates on-brand carousels and schedules them to your social accounts; this CLI is a command-line interface to the [PostNitro Embed API](https://postnitro.ai). Every command prints JSON on stdout (exit 0) or stderr (exit 1) — no colors, tables, or prompts to strip.
+PostNitro creates on-brand carousels and single-image posts and schedules them to your social accounts; this CLI is a command-line interface to the [PostNitro Embed API](https://postnitro.ai). Every command prints JSON on stdout (exit 0) or stderr (exit 1) — no colors, tables, or prompts to strip.
 
 ---
 
@@ -62,12 +62,6 @@ postnitro auth status
 
 # Remove the stored key
 postnitro auth clear
-```
-
-**Optional:** custom API endpoint
-
-```bash
-export POSTNITRO_API_BASE_URL=https://your-custom-api.com
 ```
 
 ---
@@ -142,6 +136,11 @@ The slides value can be a bare array or `{ "slides": [...] }`. Complete examples
 - `--slides <json>` / `--file <path>` — slide content (import only)
 - `--template-id <id>` / `--brand-id <id>` / `--preset-id <id>` — override saved defaults (`--preset-id` is generate only)
 - `--response-type PDF|PNG|DESIGN` — output format (default `PDF`). `DESIGN` skips rendering and only creates the editable design (no file), returning just `designId` + `editorUrl` — faster when you only need to schedule or edit.
+- `--generate-images` — opt in to AI image generation (images are generated and baked into the design before rendering). Also implied by any of the flags below.
+  - `--image-context <text>` — **required when generating images**: a short visual brief guiding the image prompts
+  - `--image-placement auto|background|in-line` — where images go (default `auto`, AI decides per slide)
+  - `--image-strategy strategic|all` — which slides get images (`strategic` ≈ 50%, default; `all` = every eligible slide)
+  - Best-effort: a completed post may still skip images (free plan / over AI-image quota); with `--wait` the result includes an `imageGeneration` step so you can see why. AI images use the org's separate AI-image quota, not the post's slide credits.
 - `--requestor-id <id>` — optional custom tracking ID
 - `--wait` — poll until completion and return the final output in one call
 
@@ -166,7 +165,7 @@ postnitro image status <embedPostId>
 postnitro image output <embedPostId>
 ```
 
-Unlike `carousel import` (an array of typed slides), `image import` takes **one slide object** via `--slide` (or `--file`) with only these fields: `heading` (**required**), `sub_heading`, `description`, `cta_button`, `image`, `background_image`, plus `layoutType`/`layoutConfig` for the infographic layout (same schema as carousels — every column/item needs a caller-provided `id`). All other options (`--template-id`, `--brand-id`, `--response-type`, `--wait`, …) match the carousel commands. The output `editorUrl` opens in the image editor.
+Unlike `carousel import` (an array of typed slides), `image import` takes **one slide object** via `--slide` (or `--file`) with only these fields: `heading` (**required**), `sub_heading`, `description`, `cta_button`, `image`, `background_image`, plus `layoutType`/`layoutConfig` for the infographic layout (same schema as carousels — every column/item needs a caller-provided `id`). All other options — `--template-id`, `--brand-id`, `--response-type`, `--generate-images` (AI images), `--wait`, … — match the carousel commands. The output `editorUrl` opens in the image editor.
 
 ---
 
@@ -218,9 +217,12 @@ postnitro schedule delete <id> --yes
 
 ---
 
-### One-shot: Generate + Schedule
+### One-shot: Create + Schedule
+
+Two commands create and schedule in a single call: `generate-and-schedule` (AI-generated) and `import-and-schedule` (your own content). Both accept `--post-type CAROUSEL|IMAGE`, the AI-image flags (`--generate-images` …), and all the scheduling options.
 
 ```bash
+# AI-generated
 postnitro generate-and-schedule \
   --context "How AI agents automate content" \
   --type text \
@@ -229,9 +231,18 @@ postnitro generate-and-schedule \
   --selected-accounts '["<socialAccountId>"]' \
   --linkedin-post-settings '{"postType":"document","postTitle":"How AI agents automate content"}' \
   --post-content '{"common":"New drop 🚀 #ai #automation"}'
+
+# Your own content — --slides (carousel array) or --slide (single image); --slides-file for a file.
+# Note: --file here is the SCHEDULE body, so slide content comes from --slides / --slides-file.
+postnitro import-and-schedule \
+  --slides '{"slides":[{"type":"starting_slide","heading":"..."}, ...]}' \
+  --status SCHEDULED \
+  --scheduled-at "2026-12-31T12:00:00Z" \
+  --selected-accounts '["<socialAccountId>"]' \
+  --post-content '{"common":"..."}'
 ```
 
-Generates a carousel, waits for it, then schedules the resulting design — in one command. If generation succeeds but scheduling fails, the error includes the `designId` so you can retry scheduling **without regenerating** (and re-spending credits).
+Creates the design, waits for it, then schedules it — in one command. If creation succeeds but scheduling fails, the error includes the `designId` so you can retry scheduling **without re-creating** (and re-spending credits).
 
 ---
 
@@ -407,8 +418,8 @@ The CLI interacts with these PostNitro Embed API endpoints:
 
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
-| `/post/initiate/generate` | POST | Start an AI carousel generation |
-| `/post/initiate/import` | POST | Start an import from your own slides |
+| `/post/initiate/generate` | POST | Start AI generation of a post (carousel or image) |
+| `/post/initiate/import` | POST | Start an import from your own content (carousel slides or a single image) |
 | `/post/status/:id` | GET | Check generation status + step logs |
 | `/post/output/:id` | GET | Get final output + `designId` |
 | `/template` | GET | List templates |
@@ -427,7 +438,6 @@ The CLI interacts with these PostNitro Embed API endpoints:
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `POSTNITRO_API_KEY` | No* | - | Your PostNitro Embed API key |
-| `POSTNITRO_API_BASE_URL` | No | `https://embed-api.postnitro.ai` | Custom API endpoint (also `--base-url`) |
 | `POSTNITRO_CONFIG_DIR` | No | `~/.postnitro-cli` | Where config/defaults are stored |
 
 *Either `--api-key`, `POSTNITRO_API_KEY`, or a saved key (`auth set-key`) is required.
@@ -471,13 +481,17 @@ src/
 │   ├── template.ts             # Template listing
 │   ├── brand.ts                # Brand kit CRUD
 │   ├── preset.ts               # AI preset listing
-│   ├── carousel.ts             # generate / import / status / output
+│   ├── carousel.ts             # carousel generate / import / status / output
+│   ├── image.ts                # image generate / import / status / output
 │   ├── social.ts               # Social account management
 │   ├── schedule.ts             # Scheduling CRUD
-│   └── generate-and-schedule.ts# One-shot generate + schedule
+│   ├── generate-and-schedule.ts# One-shot AI generate + schedule
+│   └── import-and-schedule.ts  # One-shot import + schedule
 └── lib/
     ├── client.ts               # PostNitro API client
     ├── config-store.ts         # Key + defaults resolution
+    ├── generation.ts           # Shared create-flow helpers (client, defaults, output, AI-image opts)
+    ├── slide-input.ts          # Shared slide/​image-slide JSON parsing
     ├── schedule-input.ts       # Shared schedule JSON option parsing
     ├── schedule-warnings.ts    # Soft validation warnings
     ├── json-file.ts            # JSON file reader
@@ -513,12 +527,13 @@ postnitro preset list                                                 # List AI 
 postnitro social list                                                 # List social accounts
 postnitro defaults set --template-id <id> --brand-id <id> --preset-id <id>
 
-# Create
-postnitro carousel generate --context "topic" --type text --wait      # AI generate
-postnitro carousel import --file ./slides.json --wait                 # Import from file
-postnitro carousel import --slides '{"slides":[...]}' --wait          # Import inline
-postnitro carousel status <embedPostId>                               # Check progress
-postnitro carousel output <embedPostId>                               # Get output + designId
+# Create (carousel or image; add --generate-images --image-context "..." for AI images)
+postnitro carousel generate --context "topic" --type text --wait      # AI generate carousel
+postnitro carousel import --file ./slides.json --wait                 # Import carousel (slides array)
+postnitro image generate --context "topic" --wait                     # AI generate single image
+postnitro image import --slide '{"heading":"..."}' --wait             # Import single image (one object)
+postnitro carousel status <embedPostId>                               # Check progress (also: image status)
+postnitro carousel output <embedPostId>                               # Get output + designId (also: image output)
 
 # Schedule
 postnitro schedule create --status SCHEDULED --scheduled-at "<iso>" --design-id <id> \
@@ -528,8 +543,9 @@ postnitro schedule list --from "<date>" --to "<date>"                 # List
 postnitro schedule get <id>                                           # Get one
 postnitro schedule delete <id> --yes                                  # Delete
 
-# One-shot
+# One-shot: create + schedule (both take --post-type + AI-image flags)
 postnitro generate-and-schedule --context "topic" --status SCHEDULED --scheduled-at "<iso>" ...
+postnitro import-and-schedule --slides '{"slides":[...]}' --status SCHEDULED --scheduled-at "<iso>" ...   # or --slide for image
 
 # Help
 postnitro --help

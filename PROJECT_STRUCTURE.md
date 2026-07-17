@@ -13,13 +13,17 @@ src/
 │   ├── brand.ts                 # brand list | get | create | update
 │   ├── preset.ts                # preset list
 │   ├── carousel.ts              # carousel import-template | generate | import | status | output
+│   ├── image.ts                 # image import-template | generate | import | status | output
 │   ├── social.ts                # social list | get | disconnect
 │   ├── schedule.ts              # schedule list | create | get | update | delete
-│   └── generate-and-schedule.ts # one-shot generate + schedule
+│   ├── generate-and-schedule.ts # one-shot AI generate + schedule
+│   └── import-and-schedule.ts   # one-shot import + schedule
 └── lib/
     ├── client.ts                # PostNitroClient (fetch wrapper), PostNitroApiError, pollUntilComplete, extractDesignId
     ├── config-store.ts          # API key + defaults resolution, resolveGenerationDefaults, auto-select
-    ├── schedule-input.ts        # Shared schedule JSON options + body merge (used by schedule & generate-and-schedule)
+    ├── generation.ts            # Shared create-flow helpers: clientFor, resolveDefaultsFor, summarizeOutput, AI-image opts, status/output subcommands
+    ├── slide-input.ts           # Shared slide parsing: resolveCarouselSlides (array), resolveImageSlide (object)
+    ├── schedule-input.ts        # Shared schedule JSON options + body merge (used by schedule & the *-and-schedule commands)
     ├── schedule-warnings.ts     # Soft validation warnings + deriveDocumentTitle
     ├── json-file.ts             # readJsonFile helper
     ├── output.ts                # printResult (stdout), failWith (stderr), action() error wrapper

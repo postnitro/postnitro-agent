@@ -1,0 +1,45 @@
+name: Publish to npm
+
+# Publishes the package to npm when a GitHub Release is published, using npm
+# Trusted Publishing (OIDC). No NPM_TOKEN is needed — GitHub's id-token
+# authenticates to npm directly, and provenance is generated automatically so
+# the build source can be cryptographically verified (required for n8n verified
+# community nodes).
+#
+# One-time setup on npmjs.com: on the package's Settings → "Trusted Publisher",
+# add GitHub Actions with repo `postnitro/postnitro-agent` and workflow
+# file `publish.yml` (must match this file's name).
+on:
+  release:
+    types: [published]
+  workflow_dispatch: {}
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # required for Trusted Publishing (OIDC) + provenance
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      # Trusted Publishing requires npm >= 11.5.1. Node 24 ships npm 11, but
+      # upgrade to be safe; the latest npm needs Node 22.22+/24.15+, so this
+      # step must run on Node 24 (not 20).
+      - name: Upgrade npm
+        run: npm install -g npm@latest
+
+      # npm install (not ci) so a stale package-lock.json doesn't block the
+      # build — the lockfile isn't kept in lockstep with manual version bumps.
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build
+        run: npm run build
+
+      - name: Publish (Trusted Publishing + provenance)
+        run: npm publish --access public
