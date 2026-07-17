@@ -4,29 +4,29 @@ import { printResult, failWith, action } from "../lib/output.js";
 import { clientFor, resolveDefaultsFor, addImageGenerationOptions, resolveGenerateImages, extractImageGenerationStep } from "../lib/generation.js";
 import { scheduleWarnings, deriveDocumentTitle } from "../lib/schedule-warnings.js";
 import { addScheduleJsonOptions, resolveScheduleBody } from "../lib/schedule-input.js";
-import type { PostType, ScheduledPostRequest } from "../lib/types.js";
+import { resolveCarouselSlides, resolveImageSlide } from "../lib/slide-input.js";
+import type { ImportRequest, PostType, ScheduledPostRequest } from "../lib/types.js";
 
 /**
- * Convenience command: generates a post with AI, waits for it to finish, then
- * creates a scheduled post attaching the resulting design — mirrors the MCP server's
- * postnitro_generate_and_schedule tool.
+ * Convenience command: imports your own content, waits for it to finish, then
+ * creates a scheduled post attaching the resulting design — the import-side
+ * counterpart to `generate-and-schedule`.
  */
-export function registerGenerateAndScheduleCommand(program: Command): void {
+export function registerImportAndScheduleCommand(program: Command): void {
   const command = program
-    .command("generate-and-schedule")
-    .description("Generate a post with AI, wait for it, then schedule it. May take 30-180s.")
-    .requiredOption("--context <text>", "Context/prompt for AI generation")
+    .command("import-and-schedule")
+    .description("Import your own content, wait for it, then schedule it. May take 30-180s.")
     .option("--post-type <type>", "Post kind: CAROUSEL | IMAGE", "CAROUSEL")
-    .option("--type <type>", "AI generation type: text | article | x", "text")
-    .option("--instructions <text>", "Additional instructions for the AI")
+    .option("--slides <json>", "CAROUSEL slides as inline JSON — a bare array or {\"slides\":[...]}")
+    .option("--slide <json>", "IMAGE slide as inline JSON — a single object")
+    .option("--slides-file <path>", "Path to a JSON file with the slides (array for CAROUSEL, single object for IMAGE)")
     .option("--template-id <id>", "Template ID (falls back to saved default, or auto-selects if only one exists)")
     .option("--brand-id <id>", "Brand ID (falls back to saved default, or auto-selects if only one exists)")
-    .option("--preset-id <id>", "AI preset ID (falls back to saved default, or auto-selects if only one exists)")
     .option("--response-type <type>", "Output format: PDF | PNG | DESIGN (DESIGN skips rendering)")
     .option("--requestor-id <id>", "Optional custom tracking ID")
     .requiredOption("--status <status>", "'DRAFT' or 'SCHEDULED'")
     .requiredOption("--scheduled-at <iso>", "ISO-8601 datetime, must be in the future")
-    .option("--design-id <id>", "Attach a pre-existing design instead of the freshly generated one")
+    .option("--design-id <id>", "Attach a pre-existing design instead of the freshly imported one")
     .option("--file <path>", "Path to a JSON file with postContent, selectedAccounts, and per-platform settings");
 
   addScheduleJsonOptions(addImageGenerationOptions(command)).action(
@@ -38,31 +38,45 @@ export function registerGenerateAndScheduleCommand(program: Command): void {
           throw new Error(`Invalid --post-type "${opts.postType}". Must be CAROUSEL or IMAGE.`);
         }
 
-        const defaults = await resolveDefaultsFor(client, apiKey, opts, true);
-        if (!defaults.presetId) {
-          throw new Error("Missing --preset-id. Provide it or save a default via `postnitro defaults set`.");
+        const defaults = await resolveDefaultsFor(client, apiKey, opts, false);
+        const generateImages = resolveGenerateImages(opts);
+
+        let importRequest: ImportRequest;
+        if (postType === "IMAGE") {
+          const slide = await resolveImageSlide(opts.slide, opts.slidesFile, { inline: "--slide", file: "--slides-file" });
+          importRequest = {
+            postType: "IMAGE",
+            templateId: defaults.templateId,
+            brandId: defaults.brandId,
+            responseType: defaults.responseType,
+            requestorId: opts.requestorId,
+            slides: slide,
+            generateImages,
+          };
+        } else {
+          const slides = await resolveCarouselSlides(opts.slides, opts.slidesFile, { inline: "--slides", file: "--slides-file" });
+          importRequest = {
+            postType: "CAROUSEL",
+            templateId: defaults.templateId,
+            brandId: defaults.brandId,
+            responseType: defaults.responseType,
+            requestorId: opts.requestorId,
+            slides,
+            generateImages,
+          };
         }
 
-        const initResponse = await client.initiateGenerate({
-          postType,
-          templateId: defaults.templateId,
-          brandId: defaults.brandId,
-          presetId: defaults.presetId,
-          responseType: defaults.responseType,
-          requestorId: opts.requestorId,
-          aiGeneration: { type: opts.type, context: opts.context, instructions: opts.instructions },
-          generateImages: resolveGenerateImages(opts),
-        });
+        const initResponse = await client.initiateImport(importRequest);
         const embedPostId = initResponse.data.embedPostId;
         const finalStatus = await client.pollUntilComplete(embedPostId);
         const imageGeneration = extractImageGenerationStep(finalStatus.data);
 
         const outputResponse = await client.getPostOutput(embedPostId);
-        const generatedDesignId = extractDesignId(outputResponse.data);
-        const designId = opts.designId ?? generatedDesignId;
+        const importedDesignId = extractDesignId(outputResponse.data);
+        const designId = opts.designId ?? importedDesignId;
         if (!designId) {
           throw new Error(
-            `Carousel generated (embedPostId "${embedPostId}") but its design ID could not be determined from the output. ` +
+            `Post imported (embedPostId "${embedPostId}") but its design ID could not be determined from the output. ` +
               `Run \`postnitro carousel output ${embedPostId}\` and schedule with \`postnitro schedule create\` directly.`
           );
         }
@@ -103,7 +117,7 @@ export function registerGenerateAndScheduleCommand(program: Command): void {
           const scheduleResponse = await client.createScheduledPost(scheduleRequest);
           printResult({
             success: true,
-            message: "Post generated and scheduled.",
+            message: "Post imported and scheduled.",
             embedPostId,
             designId,
             scheduledPostId: scheduleResponse.data.id,
@@ -112,8 +126,8 @@ export function registerGenerateAndScheduleCommand(program: Command): void {
             ...(warnings.length ? { warnings } : {}),
           });
         } catch (scheduleError) {
-          // Generation already succeeded (and consumed credits) — surface the designId
-          // so the caller can retry scheduling directly without regenerating.
+          // Import already succeeded (and consumed credits) — surface the designId
+          // so the caller can retry scheduling directly without re-importing.
           const reason =
             scheduleError instanceof PostNitroApiError
               ? `PostNitro API Error (${scheduleError.statusCode}): ${scheduleError.message}`
@@ -122,8 +136,8 @@ export function registerGenerateAndScheduleCommand(program: Command): void {
                 : String(scheduleError);
           failWith(
             new Error(
-              `Carousel was generated successfully (embedPostId "${embedPostId}", designId "${designId}"), but scheduling failed: ${reason}. ` +
-                `Do NOT regenerate — fix the scheduling inputs and retry with \`postnitro schedule create --design-id ${designId}\`.`
+              `Post was imported successfully (embedPostId "${embedPostId}", designId "${designId}"), but scheduling failed: ${reason}. ` +
+                `Do NOT re-import — fix the scheduling inputs and retry with \`postnitro schedule create --design-id ${designId}\`.`
             )
           );
         }

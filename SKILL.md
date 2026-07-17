@@ -5,9 +5,9 @@ homepage: https://postnitro.ai
 metadata: {"openclaw":{"emoji":"🎠","primaryEnv":"POSTNITRO_API_KEY","requires":{"bins":[],"env":["POSTNITRO_API_KEY"]}}}
 ---
 
-# PostNitro — Create & Schedule Social Carousels
+# PostNitro — Create & Schedule Social Posts
 
-PostNitro creates on-brand social media carousels and schedules them across LinkedIn, Instagram, TikTok, and Threads. This skill drives it from the command line, so an agent can take a topic, article, or set of slides and produce a finished, scheduled post in one workflow. Every command is JSON in / JSON out — safe to script and chain.
+PostNitro creates on-brand social media posts — multi-slide carousels and single images — and schedules them across LinkedIn, Instagram, TikTok, and Threads. This skill drives it from the command line, so an agent can take a topic, article, or your own content and produce a finished, scheduled post in one workflow. Every command is JSON in / JSON out — safe to script and chain.
 
 ## Setup
 
@@ -29,7 +29,6 @@ PostNitro creates on-brand social media carousels and schedules them across Link
 | Env var | Required | Purpose |
 |---------|----------|---------|
 | `POSTNITRO_API_KEY` | Yes* | API key (*unless passed via `--api-key` or saved with `auth set-key`) |
-| `POSTNITRO_API_BASE_URL` | No | Override API endpoint (default `https://embed-api.postnitro.ai`) |
 
 > **Key rule:** `carousel generate`/`import` return an **`embedPostId`** (the async job). To *schedule* the result you need its **`designId`** (from the `--wait` output or `carousel output`). Never pass an `embedPostId` to `schedule`.
 
@@ -39,9 +38,25 @@ PostNitro creates on-brand social media carousels and schedules them across Link
 
 ## Core Workflow
 
-Carousel creation is asynchronous — `--wait` handles the polling and returns the finished output (including `designId`) in one call.
+Every create command is asynchronous — `--wait` handles the polling and returns the finished output (including `designId` and `editorUrl`) in one call.
 
-### 1. Generate a carousel with AI
+### 1. Create a post
+
+Two independent choices decide which command you run:
+
+- **Post type** — a multi-slide `carousel` or a single `image`.
+- **Content source** — let AI write it (`generate`) or supply your own (`import`).
+
+That's four commands:
+
+| | `generate` (AI writes it) | `import` (you supply content) |
+|---|---|---|
+| **`carousel`** (multi-slide) | `postnitro carousel generate` | `postnitro carousel import` |
+| **`image`** (single) | `postnitro image generate` | `postnitro image import` |
+
+All four take `--template-id`/`--brand-id` (from flags or saved defaults) plus the modifiers in step 2, and every result includes the **`designId`** (needed to schedule) and an **`editorUrl`**.
+
+#### AI-generated (`generate`)
 
 ```bash
 postnitro carousel generate \
@@ -49,51 +64,73 @@ postnitro carousel generate \
   --type text \
   --instructions "Professional tone, actionable advice" \
   --wait
+
+# Single image instead — same flags, just the image subcommand
+postnitro image generate --context "Announce our new scheduling feature" --wait
 ```
 
 **`--type` values:**
-- `text` — `--context` is the topic/text to turn into a carousel
+- `text` — `--context` is the topic/text to turn into a post
 - `article` — `--context` is an article URL to extract and convert
 - `x` — `--context` is an X (Twitter) post/thread URL
 
-Template/brand/preset come from saved defaults (or pass `--template-id/--brand-id/--preset-id`). The result JSON includes the **`designId`**.
+`generate` also needs an AI preset (`--preset-id`, or a saved default).
 
-### 2. Import your own slide content
+#### Import your own content (`import`)
 
 ```bash
-# From a file, or inline JSON with --slides (inline overrides --file)
-postnitro carousel import --file ./slides.json --wait
+# Carousel — slides is an ARRAY of typed slides (inline --slides overrides --file)
 postnitro carousel import --slides '{"slides":[
   {"type":"starting_slide","heading":"Your Title","description":"Intro text"},
   {"type":"body_slide","heading":"Key Point","description":"Details here"},
   {"type":"ending_slide","heading":"Take Action!","cta_button":"Learn More"}
 ]}' --wait
-```
+postnitro carousel import --file ./slides.json --wait
 
-**Slide rules:** exactly 1 `starting_slide` (first), ≥1 `body_slide`, exactly 1 `ending_slide` (last); `heading` required on every slide. For infographics, set `layoutType: "infographic"` on a body slide (replaces its image with data columns, max 3). Run `postnitro carousel import-template` for the full schema.
-
-### 2b. Single-image posts (`image` commands)
-
-For a **single-image** post (not a multi-slide carousel), use the `image` command group — it mirrors `carousel` (`generate`, `import`, `status`, `output`, `import-template`) but produces one image:
-
-```bash
-# AI-generated image post
-postnitro image generate --context "Announce our new scheduling feature" --wait
-
-# Import your own image content — a SINGLE slide object (not an array)
+# Single image — slide is a SINGLE OBJECT (not an array), via --slide
 postnitro image import --slide '{"heading":"Welcome!","sub_heading":"Subtitle","cta_button":"Learn more"}' --wait
 ```
 
-Unlike carousel import (an array of typed slides), `image import` takes **one slide object** with only these fields: `heading` (required), `sub_heading`, `description`, `cta_button`, `image`, `background_image`, plus `layoutType`/`layoutConfig` for the infographic layout (same schema as carousels — every column/item needs a caller-provided `id`). Run `postnitro image import-template` for the schema. The output `editorUrl` opens in the image editor.
+- **Carousel** (`--slides`, array): exactly 1 `starting_slide` (first), ≥1 `body_slide`, exactly 1 `ending_slide` (last); `heading` required on every slide. Run `postnitro carousel import-template` for the schema.
+- **Image** (`--slide`, one object): fields `heading` (required), `sub_heading`, `description`, `cta_button`, `image`, `background_image` (plus infographic — see step 2). Sending an array here is rejected. Run `postnitro image import-template` for the schema.
+
+### 2. Options for any create command
+
+These layer onto any of the four commands above (and onto `generate-and-schedule`).
+
+#### Output format — `--response-type PDF | PNG | DESIGN`
+
+Default `PDF` (single file URL). `PNG` returns one URL per slide. `DESIGN` **skips rendering** — no file is produced; you get just the `designId` + `editorUrl`, the fastest option when you only need to schedule or edit.
+
+#### AI image generation — `--generate-images` (any post type, any source)
+
+Opt in to have AI generate images and bake them into the design before rendering. Works on **all four** create commands (and `generate-and-schedule`), for both carousels and images. Requires an `--image-context` brief:
+
+```bash
+postnitro carousel generate --context "How scheduling saves marketers time" \
+  --generate-images --image-context "upbeat and professional, product-focused" \
+  --image-placement auto --image-strategy all --wait
+```
+
+- `--image-context <text>` — **required** when generating images: a short visual brief for the image prompts
+- `--image-placement auto|background|in-line` (default `auto` — AI decides per slide)
+- `--image-strategy strategic|all` (`strategic` ≈ 50% of slides, default; `all` = every eligible slide)
+
+**Best-effort:** the post still completes if images fail or aren't permitted. With `--wait`, the result carries an `imageGeneration` field (the `GENERATE_IMAGES` step); if its `status` is `FAILED`, its `message` explains why (e.g. free plan can't generate AI images, or the org is over its AI-image quota). AI images bill against the org's **separate AI-image quota**, not the post's slide credits, and add latency. Without `--wait`, the same step shows up in `status` logs.
+
+#### Infographic layout — `import` only
+
+On either `import` command, set `layoutType: "infographic"` on a slide (with a `layoutConfig`) to render data columns (max 3) instead of an image. Every column and content item needs a caller-provided `id`, and each item `description` is an HTML string. See `carousel import-template` / `image import-template` for the full schema.
 
 ### 3. Check status / get output (only if you didn't use `--wait`)
 
 ```bash
 postnitro carousel status <embedPostId>   # progress + step logs; poll until COMPLETED
-postnitro carousel output <embedPostId>   # final file URL(s) + designId
+postnitro carousel output <embedPostId>   # final file URL(s) + designId + editorUrl
 ```
+(`image status` / `image output` work identically for image posts.)
 
-Output is a PDF (single URL) or PNG (one URL per slide), in `data`. Those file URLs plus the `designId` can be handed to another tool — e.g. a different scheduler — to publish on platforms PostNitro doesn't cover. The output always includes an **`editorUrl`** — a deep link to open the design in the PostNitro editor. With `--response-type DESIGN` the design is created but **not rendered**, so `data`/`mimeType`/`outputType` are omitted (you still get `designId` and `editorUrl`) — the fastest option when you only need the design/editor link, e.g. for scheduling.
+Output is a PDF (single URL) or PNG (one URL per slide) in `data`, plus the `designId` and `editorUrl`. Those can be handed to another tool — e.g. a different scheduler — to publish on platforms PostNitro doesn't cover. With `--response-type DESIGN` there's no rendered file, so `data`/`mimeType`/`outputType` are omitted (you still get `designId` and `editorUrl`).
 
 ### 4. Schedule the design to social accounts
 
@@ -109,14 +146,25 @@ postnitro schedule create \
   --post-content '{"common":"Caption with #hashtags"}'
 ```
 
-### 5. One-shot: generate + schedule
+### 5. One-shot: create + schedule
+
+Create and schedule in a single call — `generate-and-schedule` (AI writes it) or `import-and-schedule` (your own content). Both accept the schedule flags from step 4, `--post-type CAROUSEL|IMAGE`, and the AI-image options from step 2. If creation succeeds but scheduling fails, the error returns the `designId` so you can retry `schedule create` without re-creating (or re-spending credits).
 
 ```bash
+# AI-generated
 postnitro generate-and-schedule \
   --context "topic" --type text \
   --status SCHEDULED --scheduled-at "2026-12-31T13:00:00Z" \
   --selected-accounts '["<socialAccountId>"]' \
   --linkedin-post-settings '{"postType":"document","postTitle":"..."}' \
+  --post-content '{"common":"..."}'
+
+# Your own content — --slides (carousel array) or --slide (single image); --slides-file for a file.
+# (Here --file is the SCHEDULE body, so slides come from --slides / --slides-file.)
+postnitro import-and-schedule \
+  --slides '{"slides":[ ... ]}' \
+  --status SCHEDULED --scheduled-at "2026-12-31T13:00:00Z" \
+  --selected-accounts '["<socialAccountId>"]' \
   --post-content '{"common":"..."}'
 ```
 
@@ -219,6 +267,7 @@ postnitro defaults set --template-id <id> --brand-id <id> --preset-id <id> --res
 
 # Create (async — use --wait; result has designId + editorUrl)
 # --response-type PDF|PNG|DESIGN (DESIGN skips rendering; CLI default is PDF)
+# Optional AI images (any generate/import): --generate-images --image-context "brief" [--image-placement auto|background|in-line] [--image-strategy strategic|all]
 postnitro carousel generate --context "topic|url" --type text|article|x [--instructions "..."] --wait
 postnitro carousel import (--slides '{"slides":[...]}' | --file ./slides.json) --wait
 postnitro carousel status <embedPostId>        # if not using --wait
@@ -234,8 +283,9 @@ postnitro schedule create --status SCHEDULED|DRAFT --scheduled-at "<iso>" --desi
   --post-content '{"common":"caption"}'
 postnitro schedule list --from "<date>" --to "<date>" | get <id> | delete <id> --yes
 
-# One-shot
+# One-shot: create + schedule (both take --post-type + AI-image flags)
 postnitro generate-and-schedule --context "topic" --status SCHEDULED --scheduled-at "<iso>" ...
+postnitro import-and-schedule --slides '{"slides":[...]}' --status SCHEDULED --scheduled-at "<iso>" ...   # or --slide for image
 ```
 
 ## Tips for the Agent

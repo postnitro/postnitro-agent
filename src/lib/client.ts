@@ -15,7 +15,7 @@ import type {
   ScheduledPost,
 } from "./types.js";
 
-const DEFAULT_BASE_URL = "https://embed-api.postnitro.ai";
+const BASE_URL = "https://embed-api.postnitro.ai";
 
 export class PostNitroApiError extends Error {
   constructor(
@@ -29,16 +29,13 @@ export class PostNitroApiError extends Error {
 }
 
 export class PostNitroClient {
-  constructor(
-    private apiKey: string,
-    private baseUrl: string = process.env.POSTNITRO_API_BASE_URL || DEFAULT_BASE_URL
-  ) {}
+  constructor(private apiKey: string) {}
 
   private async request<T>(
     path: string,
     options: { method: "GET" | "POST" | "PUT" | "DELETE"; body?: Record<string, unknown> }
   ): Promise<T> {
-    const url = `${this.baseUrl}${path}`;
+    const url = `${BASE_URL}${path}`;
     const headers: Record<string, string> = { "embed-api-key": this.apiKey };
 
     if (options.body) {

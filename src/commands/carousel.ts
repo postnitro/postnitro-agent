@@ -1,29 +1,14 @@
 import { Command } from "commander";
 import { printResult, action } from "../lib/output.js";
-import { clientFor, resolveDefaultsFor, summarizeOutput, registerPostInspectionCommands } from "../lib/generation.js";
-import { readJsonFile } from "../lib/json-file.js";
-import type { Slide } from "../lib/types.js";
-
-/** Resolves the slides array from inline --slides JSON (wins) or a --file path; accepts a bare array or `{ slides: [...] }`. */
-async function resolveSlides(opts: Record<string, any>): Promise<Slide[]> {
-  let parsed: unknown;
-  if (opts.slides !== undefined) {
-    try {
-      parsed = JSON.parse(opts.slides);
-    } catch (e) {
-      throw new Error(`--slides must be valid JSON: ${(e as Error).message}`);
-    }
-  } else if (opts.file) {
-    parsed = await readJsonFile<unknown>(opts.file);
-  } else {
-    throw new Error("Provide slides via --slides '<json>' or --file <path>.");
-  }
-  const slides = Array.isArray(parsed) ? parsed : (parsed as { slides?: unknown })?.slides;
-  if (!Array.isArray(slides) || slides.length < 3) {
-    throw new Error("Slides must be an array with at least 3 entries (starting_slide, body_slide(s), ending_slide).");
-  }
-  return slides as Slide[];
-}
+import {
+  clientFor,
+  resolveDefaultsFor,
+  registerPostInspectionCommands,
+  addImageGenerationOptions,
+  resolveGenerateImages,
+  waitAndPrint,
+} from "../lib/generation.js";
+import { resolveCarouselSlides } from "../lib/slide-input.js";
 
 export function registerCarouselCommands(program: Command): void {
   const carousel = program.command("carousel").description("Generate, import, and inspect carousel posts");
@@ -85,7 +70,7 @@ export function registerCarouselCommands(program: Command): void {
       })
     );
 
-  carousel
+  const generate = carousel
     .command("generate")
     .description("Generate a carousel post using PostNitro's AI engine")
     .requiredOption("--context <text>", "Context/prompt for AI generation (or article/post URL, depending on --type)")
@@ -96,8 +81,8 @@ export function registerCarouselCommands(program: Command): void {
     .option("--preset-id <id>", "AI preset ID (falls back to saved default, or auto-selects if only one exists)")
     .option("--response-type <type>", "Output format: PDF | PNG | DESIGN (DESIGN skips rendering)")
     .option("--requestor-id <id>", "Optional custom tracking ID")
-    .option("--wait", "Poll until generation completes and print the final output", false)
-    .action(
+    .option("--wait", "Poll until generation completes and print the final output", false);
+  addImageGenerationOptions(generate).action(
       action(async (opts, cmd: Command) => {
         const { apiKey, client } = await clientFor(cmd);
         const defaults = await resolveDefaultsFor(client, apiKey, opts, true);
@@ -113,6 +98,7 @@ export function registerCarouselCommands(program: Command): void {
           responseType: defaults.responseType,
           requestorId: opts.requestorId,
           aiGeneration: { type: opts.type, context: opts.context, instructions: opts.instructions },
+          generateImages: resolveGenerateImages(opts),
         });
         const embedPostId = initResponse.data.embedPostId;
 
@@ -127,13 +113,11 @@ export function registerCarouselCommands(program: Command): void {
           return;
         }
 
-        await client.pollUntilComplete(embedPostId);
-        const output = await client.getPostOutput(embedPostId);
-        printResult({ success: true, ...summarizeOutput(output.data), usedDefaults: defaults });
+        await waitAndPrint(client, embedPostId, { usedDefaults: defaults });
       })
     );
 
-  carousel
+  const importCmd = carousel
     .command("import")
     .description("Create a carousel from your own slide content (see `carousel import-template` for the required format)")
     .option("--file <path>", "Path to a JSON file containing a `slides` array (or a bare array)")
@@ -142,11 +126,11 @@ export function registerCarouselCommands(program: Command): void {
     .option("--brand-id <id>", "Brand ID (falls back to saved default, or auto-selects if only one exists)")
     .option("--response-type <type>", "Output format: PDF | PNG | DESIGN (DESIGN skips rendering)")
     .option("--requestor-id <id>", "Optional custom tracking ID")
-    .option("--wait", "Poll until generation completes and print the final output", false)
-    .action(
+    .option("--wait", "Poll until generation completes and print the final output", false);
+  addImageGenerationOptions(importCmd).action(
       action(async (opts, cmd: Command) => {
         const { apiKey, client } = await clientFor(cmd);
-        const slides = await resolveSlides(opts);
+        const slides = await resolveCarouselSlides(opts.slides, opts.file, { inline: "--slides", file: "--file" });
 
         const defaults = await resolveDefaultsFor(client, apiKey, opts, false);
 
@@ -157,6 +141,7 @@ export function registerCarouselCommands(program: Command): void {
           responseType: defaults.responseType,
           requestorId: opts.requestorId,
           slides,
+          generateImages: resolveGenerateImages(opts),
         });
         const embedPostId = initResponse.data.embedPostId;
 
@@ -171,9 +156,7 @@ export function registerCarouselCommands(program: Command): void {
           return;
         }
 
-        await client.pollUntilComplete(embedPostId);
-        const output = await client.getPostOutput(embedPostId);
-        printResult({ success: true, ...summarizeOutput(output.data), usedDefaults: defaults });
+        await waitAndPrint(client, embedPostId, { usedDefaults: defaults });
       })
     );
 

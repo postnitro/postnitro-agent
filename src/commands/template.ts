@@ -14,7 +14,7 @@ export function registerTemplateCommands(program: Command): void {
     .action(
       action(async (opts, cmd: Command) => {
         const globals = cmd.optsWithGlobals();
-        const client = new PostNitroClient(await resolveApiKey(globals.apiKey), globals.baseUrl);
+        const client = new PostNitroClient(await resolveApiKey(globals.apiKey));
         const response = await client.listTemplates(Number(opts.page), Number(opts.limit));
         const templates = response.data.templates;
         printResult({

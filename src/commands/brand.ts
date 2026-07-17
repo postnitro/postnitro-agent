@@ -7,7 +7,7 @@ import type { BrandInput } from "../lib/types.js";
 
 function getClient(cmd: Command): Promise<PostNitroClient> {
   const opts = cmd.optsWithGlobals();
-  return resolveApiKey(opts.apiKey).then((apiKey) => new PostNitroClient(apiKey, opts.baseUrl));
+  return resolveApiKey(opts.apiKey).then((apiKey) => new PostNitroClient(apiKey));
 }
 
 /**

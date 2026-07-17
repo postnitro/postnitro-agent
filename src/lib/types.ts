@@ -24,6 +24,23 @@ export type PostType = "CAROUSEL" | "IMAGE";
  */
 export type ResponseType = "PDF" | "PNG" | "DESIGN";
 
+export type ImagePlacement = "auto" | "background" | "in-line";
+export type ImageStrategy = "strategic" | "all";
+
+/**
+ * Opt-in AI image generation. Sending this object enables it (best-effort);
+ * omit it entirely to leave images off. Only these three fields are accepted —
+ * `editorType`, image model, and copy config are resolved server-side.
+ */
+export interface GenerateImagesConfig {
+  /** Topic/brief guiding the image prompts. On generate, falls back to `aiGeneration.context`. */
+  context?: string;
+  /** `auto` (AI decides per slide), `background`, or `in-line`. Default `auto`. */
+  imagePlacement?: ImagePlacement;
+  /** `strategic` (~50% of slides) or `all` (every eligible slide). Default `strategic`. */
+  imageStrategy?: ImageStrategy;
+}
+
 export interface GenerateRequest {
   postType: PostType;
   requestorId?: string;
@@ -32,6 +49,7 @@ export interface GenerateRequest {
   presetId: string;
   responseType?: ResponseType;
   aiGeneration: AiGenerationConfig;
+  generateImages?: GenerateImagesConfig;
 }
 
 export interface Slide {
@@ -96,6 +114,7 @@ export interface ImportCarouselRequest {
   responseType?: ResponseType;
   /** CAROUSEL takes an array of typed slides (1 starting, ≥1 body, 1 ending). */
   slides: Slide[];
+  generateImages?: GenerateImagesConfig;
 }
 
 export interface ImportImageRequest {
@@ -106,6 +125,7 @@ export interface ImportImageRequest {
   responseType?: ResponseType;
   /** IMAGE takes a single slide object (not an array). */
   slides: ImageSlide;
+  generateImages?: GenerateImagesConfig;
 }
 
 /** Shape is strictly enforced per `postType`: array for CAROUSEL, object for IMAGE. */
