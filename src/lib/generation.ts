@@ -1,8 +1,16 @@
 import { Command } from "commander";
 import { PostNitroClient, extractDesignId } from "./client.js";
-import { resolveApiKey, resolveGenerationDefaults } from "./config-store.js";
+import { getDefaults, resolveApiKey, resolveGenerationDefaults } from "./config-store.js";
 import { printResult, action } from "./output.js";
-import type { PostOutputData, PostStatusData, GenerateImagesConfig, ImagePlacement, ImageStrategy } from "./types.js";
+import type {
+  PostOutputData,
+  PostStatusData,
+  GenerateImagesConfig,
+  ImagePlacement,
+  ImageStrategy,
+  VideoSettings,
+  VideoResponseType,
+} from "./types.js";
 
 /** Builds an authenticated client from the command's global options, returning the resolved key too. */
 export async function clientFor(cmd: Command): Promise<{ apiKey: string; client: PostNitroClient }> {
@@ -33,7 +41,7 @@ export function resolveDefaultsFor(
 
 /**
  * Builds the standard output summary printed by generate/import (and `output`).
- * Render fields (type/mimeType/data) are present only for PDF/PNG — DESIGN omits them.
+ * Render fields (type/mimeType/data) are present for PDF, PNG, and MP4 — DESIGN omits them.
  */
 export function summarizeOutput(data: PostOutputData): Record<string, unknown> {
   const { result, embedPost } = data;
@@ -105,6 +113,114 @@ export function resolveGenerateImages(opts: Record<string, any>): GenerateImages
   if (opts.imagePlacement !== undefined) config.imagePlacement = normalizeImagePlacement(opts.imagePlacement);
   if (opts.imageStrategy !== undefined) config.imageStrategy = normalizeImageStrategy(opts.imageStrategy);
   return config;
+}
+
+// ============================================================
+// Video posts
+// ============================================================
+
+export const VIDEO_MIN_DURATION_SECONDS = 5;
+/** Exclusive: the duration must stay under a minute. */
+export const VIDEO_MAX_DURATION_SECONDS = 60;
+
+/** Adds the video render flags to a video generate/import command. */
+export function addVideoOptions(command: Command): Command {
+  return command
+    .option(
+      "--video-duration <seconds>",
+      `Length of the rendered video in seconds (${VIDEO_MIN_DURATION_SECONDS} to under ${VIDEO_MAX_DURATION_SECONDS}). Required with --response-type MP4`
+    )
+    .option("--audio-id <id>", "Media ID of an audio track to lay over the video — an ID, not a URL (see `postnitro audio list`)");
+}
+
+/**
+ * Builds `videoSettings` from the CLI flags, or `undefined` when neither was given.
+ * The duration is parsed and range-checked here so bad input fails before the API call.
+ */
+export function resolveVideoSettings(opts: Record<string, any>): VideoSettings | undefined {
+  const hasDuration = opts.videoDuration !== undefined;
+  const audioId = typeof opts.audioId === "string" ? opts.audioId.trim() : "";
+
+  if (!hasDuration && !audioId) return undefined;
+
+  if (!hasDuration) {
+    throw new Error("--audio-id also needs --video-duration: the video's length is what videoSettings is built around.");
+  }
+
+  const videoDuration = Number(opts.videoDuration);
+  if (!Number.isFinite(videoDuration)) {
+    throw new Error(`Invalid --video-duration "${opts.videoDuration}". Must be a number of seconds.`);
+  }
+  if (videoDuration < VIDEO_MIN_DURATION_SECONDS || videoDuration >= VIDEO_MAX_DURATION_SECONDS) {
+    throw new Error(
+      `Invalid --video-duration "${opts.videoDuration}". Must be at least ${VIDEO_MIN_DURATION_SECONDS} seconds and less than ${VIDEO_MAX_DURATION_SECONDS} seconds.`
+    );
+  }
+
+  const settings: VideoSettings = { videoDuration };
+  if (audioId) settings.audioId = audioId;
+  return settings;
+}
+
+/**
+ * Resolves the output format for a video command. A video only accepts MP4 or
+ * DESIGN, so: an explicit flag wins (and PDF/PNG is an error, since it can't be
+ * honored); otherwise a compatible saved default is used; otherwise DESIGN.
+ *
+ * A saved PDF/PNG default — likely left over from carousel work — is coerced to
+ * DESIGN with a note rather than failing a call the user never pointed at that
+ * format. The note is only emitted for a real saved default, not for the CLI's own
+ * fallback, so a plain `video generate` stays quiet.
+ */
+export function resolveVideoResponseType(
+  requested: string | undefined,
+  savedDefault: string | undefined
+): { responseType: VideoResponseType; note?: string } {
+  if (requested !== undefined) {
+    const value = String(requested).toUpperCase();
+    if (value !== "MP4" && value !== "DESIGN") {
+      throw new Error(
+        `Invalid --response-type "${requested}" for a video. Use MP4 to render the video, or DESIGN to skip rendering.`
+      );
+    }
+    return { responseType: value as VideoResponseType };
+  }
+
+  if (savedDefault === undefined) {
+    return { responseType: "DESIGN" };
+  }
+
+  const saved = String(savedDefault).toUpperCase();
+  if (saved === "MP4" || saved === "DESIGN") {
+    return { responseType: saved as VideoResponseType };
+  }
+
+  return {
+    responseType: "DESIGN",
+    note: `Saved default response type "${savedDefault}" doesn't apply to videos — used DESIGN. Pass --response-type MP4 to render the video file.`,
+  };
+}
+
+/**
+ * Video output format resolved against the *saved* defaults rather than the merged
+ * ones, so the CLI's own PDF fallback (which no video can use) never leaks in.
+ */
+export async function resolveVideoOutput(
+  apiKey: string,
+  requested: string | undefined
+): Promise<{ responseType: VideoResponseType; note?: string }> {
+  const saved = await getDefaults(apiKey);
+  return resolveVideoResponseType(requested, saved?.responseType);
+}
+
+/** An MP4 render needs a duration; fail here with guidance instead of at the API. */
+export function assertVideoSettings(responseType: VideoResponseType, videoSettings?: VideoSettings): void {
+  if (responseType === "MP4" && !videoSettings) {
+    throw new Error(
+      `--response-type MP4 requires --video-duration (${VIDEO_MIN_DURATION_SECONDS} to under ${VIDEO_MAX_DURATION_SECONDS} seconds), plus an optional --audio-id. ` +
+        `Use --response-type DESIGN to create the design without rendering a video.`
+    );
+  }
 }
 
 /** Pulls the best-effort `GENERATE_IMAGES` job-log step from a status response, if present. */

@@ -9,6 +9,7 @@ import type {
   BrandItem,
   BrandInput,
   PresetItem,
+  AudioItem,
   SocialAccountsData,
   SocialAccountDetailData,
   ScheduledPostRequest,
@@ -126,6 +127,18 @@ export class PostNitroClient {
   }
 
   // ============================================================
+  // Audio
+  // ============================================================
+
+  listAudios(page = 1, limit = 10): Promise<PostNitroApiResponse<{ audios: AudioItem[] }>> {
+    return this.request(`/audio?page=${page}&limit=${limit}`, { method: "GET" });
+  }
+
+  deleteAudio(audioId: string): Promise<PostNitroApiResponse<unknown>> {
+    return this.request(`/audio/${audioId}`, { method: "DELETE" });
+  }
+
+  // ============================================================
   // Social accounts
   // ============================================================
 
@@ -145,9 +158,21 @@ export class PostNitroClient {
   // Scheduling
   // ============================================================
 
-  listScheduledPosts(fromDate: string, toDate: string): Promise<PostNitroApiResponse<ScheduledPost[]>> {
-    const query = `fromDate=${encodeURIComponent(fromDate)}&toDate=${encodeURIComponent(toDate)}`;
-    return this.request(`/schedule?${query}`, { method: "GET" });
+  /**
+   * `socialAccountIds` filters the posts, not the accounts inside them: a post is
+   * returned when it targets at least one of the ids, and it still reports every
+   * account it targets. The API takes them comma-separated; omitted means no filter.
+   */
+  listScheduledPosts(
+    fromDate: string,
+    toDate: string,
+    socialAccountIds?: string[]
+  ): Promise<PostNitroApiResponse<ScheduledPost[]>> {
+    const query = new URLSearchParams({ fromDate, toDate });
+    if (socialAccountIds && socialAccountIds.length > 0) {
+      query.set("socialAccountIds", socialAccountIds.join(","));
+    }
+    return this.request(`/schedule?${query.toString()}`, { method: "GET" });
   }
 
   createScheduledPost(request: ScheduledPostRequest): Promise<PostNitroApiResponse<ScheduledPost>> {
@@ -185,15 +210,15 @@ export class PostNitroClient {
 
       if (status === "FAILED") {
         const lastLog = statusResponse.data.logs[statusResponse.data.logs.length - 1];
-        throw new PostNitroApiError(`Carousel generation failed: ${lastLog?.message ?? "Unknown error"}`, 500);
+        throw new PostNitroApiError(`Post generation failed: ${lastLog?.message ?? "Unknown error"}`, 500);
       }
 
       await new Promise((resolve) => setTimeout(resolve, intervalMs));
     }
 
     throw new PostNitroApiError(
-      `Carousel generation timed out after ${(maxAttempts * intervalMs) / 1000}s. ` +
-        `Use "postnitro carousel status ${embedPostId}" to check later.`,
+      `Post generation timed out after ${(maxAttempts * intervalMs) / 1000}s. ` +
+        `Use "postnitro <carousel|image|video> status ${embedPostId}" — whichever matches the post — to check later.`,
       408
     );
   }

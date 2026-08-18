@@ -46,13 +46,21 @@ export function registerScheduleCommands(program: Command): void {
 
   schedule
     .command("list")
-    .description("List scheduled posts and drafts within a date range")
+    .description("List scheduled posts and drafts within a date range, optionally limited to specific social accounts")
     .requiredOption("--from <date>", "Start of range (ISO-8601 recommended)")
     .requiredOption("--to <date>", "End of range (ISO-8601 recommended)")
+    .option(
+      "--accounts <ids>",
+      "Comma-separated social-account IDs to filter by (from `postnitro social list`). Returns posts targeting at least ONE of them; each post still lists all of its accounts. Unknown IDs simply match nothing."
+    )
     .action(
       action(async (opts, cmd: Command) => {
         const client = await getClient(cmd);
-        const response = await client.listScheduledPosts(opts.from, opts.to);
+        const socialAccountIds =
+          typeof opts.accounts === "string"
+            ? opts.accounts.split(",").map((id: string) => id.trim()).filter(Boolean)
+            : undefined;
+        const response = await client.listScheduledPosts(opts.from, opts.to, socialAccountIds);
         const posts = response.data;
         printResult({
           count: posts.length,

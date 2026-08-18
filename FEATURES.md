@@ -13,6 +13,17 @@ What the PostNitro CLI can do.
 - **`image generate` / `image import`** create a single-image post (mirrors the `carousel` commands). Import takes **one slide object** (not an array) via `--slide`/`--file`.
 - **`image import-template`** prints the authoritative image-slide schema.
 
+## Video posts
+- **`video generate` / `video import`** create a video whose slides are its scenes. Import takes the **same slide array** as a carousel.
+- **`--video-duration <seconds>`** sets the whole video's length (5 to under 60), required when rendering to MP4; **`--audio-id <id>`** lays an audio track over it.
+- **MP4 or DESIGN only** (`--response-type`) — `PDF`/`PNG` are rejected for a video, and `MP4` is rejected for other post types. Defaults to `DESIGN`.
+- **`video import-template`** prints the scene rules and render settings.
+
+## Audio
+- **`audio list`** returns the workspace's audio tracks with the IDs used by `--audio-id` and a reel's `postSettings.audioId`.
+- **`audio delete <id> --yes`** removes a track and its stored file; refused while a scheduled post still uses it.
+- Uploading is done in the PostNitro app — the CLI lists and deletes only.
+
 ## AI image generation (opt-in)
 - **`--generate-images`** on any generate/import command (and `generate-and-schedule`) generates AI images and bakes them into the design before rendering.
 - Tune with **`--image-placement`** (`auto`/`background`/`in-line`), **`--image-strategy`** (`strategic`/`all`), and **`--image-context`**.
@@ -20,7 +31,7 @@ What the PostNitro CLI can do.
 
 ## Async handling
 - **`--wait`** polls generation/import to completion and returns the final output — including the `designId` and `editorUrl` — in a single call.
-- Manual tracking via **`carousel`/`image status <embedPostId>`** (step logs) and **`carousel`/`image output <embedPostId>`**.
+- Manual tracking via **`carousel`/`image`/`video status <embedPostId>`** (step logs) and **`carousel`/`image`/`video output <embedPostId>`**.
 
 ## Brand kits
 - **List / get / create / update** brand kits (logo, name, handle stamped on carousels).

@@ -1,13 +1,13 @@
 ---
 name: postnitro
-description: Create on-brand social media carousels and single-image posts and schedule them to LinkedIn, Instagram, TikTok, and Threads from a single command. Turn a topic, article, or X thread into a finished multi-slide post or image — or import your own content — then publish or draft it automatically. Fully scriptable (JSON in, JSON out), so an AI agent can run the entire create-to-schedule workflow. Use this skill whenever the user wants to create a carousel, image post, slide post, or multi-slide content, repurpose an article, blog post, or X thread into slides, or automate and schedule social media posts. Use it to create and schedule content through PostNitro, not as a general social-media strategy advisor. Requires a PostNitro API key.
+description: Create on-brand social media carousels, single-image posts, and short videos, and schedule them to LinkedIn, Instagram, TikTok, and Threads from a single command. Turn a topic, article, or X thread into a finished multi-slide post, image, or video (with an optional audio track) — or import your own content — then publish or draft it automatically. Fully scriptable (JSON in, JSON out), so an AI agent can run the entire create-to-schedule workflow. Use this skill whenever the user wants to create a carousel, image post, video, reel, slide post, or multi-slide content, repurpose an article, blog post, or X thread into slides or a video, or automate and schedule social media posts. Use it to create and schedule content through PostNitro, not as a general social-media strategy advisor. Requires a PostNitro API key.
 homepage: https://postnitro.ai
 metadata: {"openclaw":{"emoji":"🎠","primaryEnv":"POSTNITRO_API_KEY","requires":{"bins":[],"env":["POSTNITRO_API_KEY"]}}}
 ---
 
 # PostNitro — Create & Schedule Social Posts
 
-PostNitro creates on-brand social media posts — multi-slide carousels and single images — and schedules them across LinkedIn, Instagram, TikTok, and Threads. This skill drives it from the command line, so an agent can take a topic, article, or your own content and produce a finished, scheduled post in one workflow. Every command is JSON in / JSON out — safe to script and chain.
+PostNitro creates on-brand social media posts — multi-slide carousels, single images, and short videos — and schedules them across LinkedIn, Instagram, TikTok, and Threads. This skill drives it from the command line, so an agent can take a topic, article, or your own content and produce a finished, scheduled post in one workflow. Every command is JSON in / JSON out — safe to script and chain.
 
 ## Setup
 
@@ -44,17 +44,18 @@ Every create command is asynchronous — `--wait` handles the polling and return
 
 Two independent choices decide which command you run:
 
-- **Post type** — a multi-slide `carousel` or a single `image`.
+- **Post type** — a multi-slide `carousel`, a single `image`, or a `video`.
 - **Content source** — let AI write it (`generate`) or supply your own (`import`).
 
-That's four commands:
+That's six commands:
 
 | | `generate` (AI writes it) | `import` (you supply content) |
 |---|---|---|
 | **`carousel`** (multi-slide) | `postnitro carousel generate` | `postnitro carousel import` |
 | **`image`** (single) | `postnitro image generate` | `postnitro image import` |
+| **`video`** (slides become scenes) | `postnitro video generate` | `postnitro video import` |
 
-All four take `--template-id`/`--brand-id` (from flags or saved defaults) plus the modifiers in step 2, and every result includes the **`designId`** (needed to schedule) and an **`editorUrl`**.
+All six take `--template-id`/`--brand-id` (from flags or saved defaults) plus the modifiers in step 2, and every result includes the **`designId`** (needed to schedule) and an **`editorUrl`**.
 
 #### AI-generated (`generate`)
 
@@ -67,6 +68,10 @@ postnitro carousel generate \
 
 # Single image instead — same flags, just the image subcommand
 postnitro image generate --context "Announce our new scheduling feature" --wait
+
+# Video — same flags, plus the render length when you want the MP4 back
+postnitro video generate --context "3 habits that make remote teams faster" \
+  --response-type MP4 --video-duration 30 --wait
 ```
 
 **`--type` values:**
@@ -89,22 +94,40 @@ postnitro carousel import --file ./slides.json --wait
 
 # Single image — slide is a SINGLE OBJECT (not an array), via --slide
 postnitro image import --slide '{"heading":"Welcome!","sub_heading":"Subtitle","cta_button":"Learn more"}' --wait
+
+# Video — same slide ARRAY as a carousel; each slide is a scene
+postnitro video import --file ./scenes.json --response-type MP4 --video-duration 30 --wait
 ```
 
 - **Carousel** (`--slides`, array): exactly 1 `starting_slide` (first), ≥1 `body_slide`, exactly 1 `ending_slide` (last); `heading` required on every slide. Run `postnitro carousel import-template` for the schema. Ready-to-use: [examples/import-default.json](examples/import-default.json), [examples/import-infographics.json](examples/import-infographics.json).
 - **Image** (`--slide`, one object): fields `heading` (required), `sub_heading`, `description`, `cta_button`, `image`, `background_image` (plus infographic — see step 2). Sending an array here is rejected. Run `postnitro image import-template` for the schema.
+- **Video** (`--slides`, array): the carousel rules exactly — each slide becomes a scene, in order. Run `postnitro video import-template` for the schema and the render settings.
 
 ### 2. Options for any create command
 
 These layer onto any of the four commands above (and onto `generate-and-schedule`).
 
-#### Output format — `--response-type PDF | PNG | DESIGN`
+#### Output format — `--response-type PDF | PNG | DESIGN | MP4`
 
 Default `PDF` (single file URL). `PNG` returns one URL per slide. `DESIGN` **skips rendering** — no file is produced; you get just the `designId` + `editorUrl`, the fastest option when you only need to schedule or edit.
 
+`MP4` (single video URL) belongs to `video` only, and a video accepts **nothing but** `MP4` or `DESIGN` — never `PDF`/`PNG`. Video commands default to `DESIGN`, so pass `--response-type MP4` when you want the file. `MP4` also can't be stored via `defaults set`, since it would break carousel and image calls.
+
+#### Video length & audio — `video` only
+
+```bash
+postnitro audio list                       # find an audio track's ID
+postnitro video generate --context "..." --response-type MP4 --video-duration 30 --audio-id <audioId> --wait
+```
+
+- `--video-duration <seconds>` — the **whole video's** length, not per scene. At least 5 and under 60. **Required** with `--response-type MP4`; optional for `DESIGN` (set it later in the editor).
+- `--audio-id <id>` — an audio **ID** from `postnitro audio list`, never a URL. Omit for a silent video. Uploading audio happens in the PostNitro app; the CLI can list (`audio list`) and delete (`audio delete <id> --yes`) but not upload.
+- Rendering a video takes longer than a carousel — typically 15-45s with `--wait` and `MP4`, longer for designs with animations or GIFs.
+- These same settings are reused automatically when the video is later scheduled as a reel.
+
 #### AI image generation — `--generate-images` (any post type, any source)
 
-Opt in to have AI generate images and bake them into the design before rendering. Works on **all four** create commands (and `generate-and-schedule`), for both carousels and images. Requires an `--image-context` brief:
+Opt in to have AI generate images and bake them into the design before rendering. Works on **all six** create commands (and both one-shot commands) — carousels, images, and videos alike. Requires an `--image-context` brief:
 
 ```bash
 postnitro carousel generate --context "How scheduling saves marketers time" \
@@ -128,9 +151,9 @@ On either `import` command, set `layoutType: "infographic"` on a slide (with a `
 postnitro carousel status <embedPostId>   # progress + step logs; poll until COMPLETED
 postnitro carousel output <embedPostId>   # final file URL(s) + designId + editorUrl
 ```
-(`image status` / `image output` work identically for image posts.)
+(`image status` / `image output` and `video status` / `video output` work identically for those post types.)
 
-Output is a PDF (single URL) or PNG (one URL per slide) in `data`, plus the `designId` and `editorUrl`. Those can be handed to another tool — e.g. a different scheduler — to publish on platforms PostNitro doesn't cover. With `--response-type DESIGN` there's no rendered file, so `data`/`mimeType`/`outputType` are omitted (you still get `designId` and `editorUrl`).
+Output is a PDF (single URL), PNG (one URL per slide), or MP4 (single URL) in `data`, plus the `designId` and `editorUrl`. Those can be handed to another tool — e.g. a different scheduler — to publish on platforms PostNitro doesn't cover. With `--response-type DESIGN` there's no rendered file, so `data`/`mimeType`/`outputType` are omitted (you still get `designId` and `editorUrl`).
 
 ### 4. Schedule the design to social accounts
 
@@ -148,7 +171,7 @@ postnitro schedule create \
 
 ### 5. One-shot: create + schedule
 
-Create and schedule in a single call — `generate-and-schedule` (AI writes it) or `import-and-schedule` (your own content). Both accept the schedule flags from step 4, `--post-type CAROUSEL|IMAGE`, and the AI-image options from step 2. If creation succeeds but scheduling fails, the error returns the `designId` so you can retry `schedule create` without re-creating (or re-spending credits).
+Create and schedule in a single call — `generate-and-schedule` (AI writes it) or `import-and-schedule` (your own content). Both accept the schedule flags from step 4, `--post-type CAROUSEL|IMAGE|VIDEO` (with `--video-duration`/`--audio-id` for a video), and the AI-image options from step 2. If creation succeeds but scheduling fails, the error returns the `designId` so you can retry `schedule create` without re-creating (or re-spending credits).
 
 ```bash
 # AI-generated
@@ -193,7 +216,24 @@ postnitro carousel generate --context "https://x.com/username/status/1234567890"
 Import slides with `layoutType: "infographic"` body slides — see
 [examples/import-infographics.json](examples/import-infographics.json).
 
-### Pattern 5: Generate → schedule to LinkedIn
+### Pattern 5: Video reel with an audio track
+```bash
+AUDIO=$(postnitro audio list | jq -r '.audios[0].id')
+postnitro video generate --context "3 habits that make remote teams faster" --type text \
+  --response-type MP4 --video-duration 30 --audio-id "$AUDIO" --wait
+```
+A reel reuses the video's own duration and audio when scheduled, so `--post-settings` is
+optional — omit it and the API fills it in (falling back to 30s with no audio).
+
+### Pattern 6: Audit one account's schedule
+```bash
+LINKEDIN=$(postnitro social list | jq -r 'first(.accounts[] | select(.platform=="linkedin").id)')
+postnitro schedule list --from 2026-09-01 --to 2026-09-30 --accounts "$LINKEDIN"
+```
+`--accounts` filters the **posts**, not the accounts inside them: a post targeting LinkedIn
+and Instagram is returned when you filter by either, and it still lists both accounts.
+
+### Pattern 7: Generate → schedule to LinkedIn
 ```bash
 DID=$(postnitro carousel generate --context "5 remote work habits" --type text --wait | jq -r .designId)
 LINKEDIN=$(postnitro social list | jq -r 'first(.accounts[] | select(.platform=="linkedin").id)')
