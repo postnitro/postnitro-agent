@@ -16,13 +16,39 @@ export interface AiGenerationConfig {
 }
 
 /** Post kind. Must be sent uppercase — the API rejects lowercase values. */
-export type PostType = "CAROUSEL" | "IMAGE";
+export type PostType = "CAROUSEL" | "IMAGE" | "VIDEO";
 
 /**
- * Output format. `DESIGN` skips rendering (no PDF/PNG artifact) and just creates
+ * Output format. `DESIGN` skips rendering (no PDF/PNG/MP4 artifact) and just creates
  * the editable design — faster/lighter for scheduling and editor-based flows.
+ * `MP4` is VIDEO-only, and VIDEO accepts nothing but `MP4` or `DESIGN`.
  */
-export type ResponseType = "PDF" | "PNG" | "DESIGN";
+export type ResponseType = "PDF" | "PNG" | "DESIGN" | "MP4";
+
+/** The two formats a VIDEO post can be produced as. */
+export type VideoResponseType = "MP4" | "DESIGN";
+
+/**
+ * What may be stored as a saved default. MP4 is excluded deliberately: it only
+ * applies to VIDEO posts, so saving it would break every carousel and image
+ * call. The video commands take it per call instead — which is also why the
+ * resolvers never have to handle a saved MP4.
+ */
+export type SavedResponseType = Exclude<ResponseType, "MP4">;
+
+/**
+ * Render settings for a VIDEO post. Required when the response type is `MP4`
+ * (a render needs a length), optional for `DESIGN`, rejected for other post types.
+ *
+ * Same shape as a scheduled reel's `postSettings` — the API reuses a video's own
+ * settings when it's scheduled as a reel.
+ */
+export interface VideoSettings {
+  /** Seconds. At least 5 and under 60. */
+  videoDuration: number;
+  /** Media id of an audio track — an id, not a URL. From `postnitro audio list`. */
+  audioId?: string;
+}
 
 export type ImagePlacement = "auto" | "background" | "in-line";
 export type ImageStrategy = "strategic" | "all";
@@ -50,6 +76,8 @@ export interface GenerateRequest {
   responseType?: ResponseType;
   aiGeneration: AiGenerationConfig;
   generateImages?: GenerateImagesConfig;
+  /** VIDEO posts only. */
+  videoSettings?: VideoSettings;
 }
 
 export interface Slide {
@@ -117,6 +145,21 @@ export interface ImportCarouselRequest {
   generateImages?: GenerateImagesConfig;
 }
 
+/**
+ * VIDEO shares the carousel import shape — an array of typed slides, one per
+ * scene — plus `videoSettings` for the render.
+ */
+export interface ImportVideoRequest {
+  postType: "VIDEO";
+  requestorId?: string;
+  templateId: string;
+  brandId: string;
+  responseType?: ResponseType;
+  slides: Slide[];
+  generateImages?: GenerateImagesConfig;
+  videoSettings?: VideoSettings;
+}
+
 export interface ImportImageRequest {
   postType: "IMAGE";
   requestorId?: string;
@@ -128,8 +171,8 @@ export interface ImportImageRequest {
   generateImages?: GenerateImagesConfig;
 }
 
-/** Shape is strictly enforced per `postType`: array for CAROUSEL, object for IMAGE. */
-export type ImportRequest = ImportCarouselRequest | ImportImageRequest;
+/** Shape is strictly enforced per `postType`: array for CAROUSEL/VIDEO, object for IMAGE. */
+export type ImportRequest = ImportCarouselRequest | ImportVideoRequest | ImportImageRequest;
 
 export interface PostStatusData {
   embedPostId: string;
@@ -166,9 +209,10 @@ export interface PostOutputData {
     size: { id: string; dimensions: { width: number; height: number } };
     /** Deep link to open the design in the editor. Null if it can't be resolved. Present for all response types. */
     editorUrl?: string | null;
-    // Rendered-artifact fields — present only for PDF/PNG. DESIGN omits them.
+    // Rendered-artifact fields — present for PDF, PNG, and MP4. DESIGN omits them.
     type?: string;
     mimeType?: string;
+    /** A single URL for PDF and MP4 (one artifact each); one URL per slide for PNG. */
     data?: string | string[];
   };
 }
@@ -212,6 +256,26 @@ export interface BrandInput {
   showName: boolean;
   showHandle: boolean;
   showImage: boolean;
+}
+
+// ============================================================
+// Audio
+// ============================================================
+
+/**
+ * An audio file in the workspace. Uploaded in the PostNitro app — the API only
+ * lists and deletes. `id` is what `videoSettings.audioId` (video posts) and
+ * `postSettings.audioId` (reels) expect.
+ */
+export interface AudioItem {
+  id: string;
+  name: string;
+  url: string;
+  /** Track length in seconds, when the uploader recorded one. */
+  duration: number | null;
+  artistName: string | null;
+  source: string;
+  createdAt: string;
 }
 
 // ============================================================
@@ -296,6 +360,11 @@ export interface ThreadsPostSettings {
   postType: "carousel" | "image" | "reel";
 }
 
+/**
+ * A scheduled reel's video render settings — the same shape as a VIDEO post's
+ * {@link VideoSettings}. Optional: when omitted, the API fills each field from the
+ * settings the attached design was generated with, then from 30 seconds / no audio.
+ */
 export interface ReelPostSettings {
   videoDuration: number;
   audioId?: string;

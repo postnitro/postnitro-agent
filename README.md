@@ -169,6 +169,55 @@ Unlike `carousel import` (an array of typed slides), `image import` takes **one 
 
 ---
 
+### Creating Video Posts
+
+The `video` command group turns slides into a video — **each slide is a scene**, so `video import` takes the same slide array as `carousel import`:
+
+```bash
+# See the slide rules + render settings
+postnitro video import-template
+
+# Generate with AI, rendered to MP4
+postnitro video generate --context "3 habits that make remote teams faster" \
+  --response-type MP4 --video-duration 30 --wait
+
+# Import your own scenes, with an audio track
+AUDIO=$(postnitro audio list | jq -r '.audios[0].id')
+postnitro video import --file ./scenes.json \
+  --response-type MP4 --video-duration 30 --audio-id "$AUDIO" --wait
+
+# Design only — no render; finish it in the video maker
+postnitro video generate --context "..." --wait
+
+# Status / output (mirror carousel)
+postnitro video status <embedPostId>
+postnitro video output <embedPostId>
+```
+
+**Video-only options:**
+- `--response-type MP4|DESIGN` — a video accepts **nothing else** (`PDF`/`PNG` are rejected, and `MP4` is rejected for other post types). Defaults to `DESIGN`; a saved `PDF`/`PNG` default is treated as `DESIGN` and noted in `warnings`.
+- `--video-duration <seconds>` — the **whole video's** length, not per scene. At least 5, under 60. **Required** with `--response-type MP4`.
+- `--audio-id <id>` — an audio **ID** from `postnitro audio list`, never a URL. Omit for a silent video.
+
+Rendering a video takes longer than a carousel — typically 15-45s with `--wait` and `MP4`, and longer for designs with animations or GIFs (which use the enhanced renderer). The duration and audio are reused automatically when the video is scheduled as a reel.
+
+---
+
+### Audio Tracks
+
+Audio for video posts and reels. **Uploading happens in the PostNitro app** — the CLI lists and deletes only:
+
+```bash
+postnitro audio list                     # ids to pass as --audio-id
+postnitro audio delete <audioId> --yes   # destructive
+```
+
+`audio list` returns `{ id, name, url, duration, artistName, source, createdAt }` per track. Use `id` for `--audio-id` (and for a reel's `postSettings.audioId`); `url` is only for previewing. A track's `duration` is independent of `--video-duration` — a longer track is cut off at the video's length.
+
+`audio delete` removes the record **and** the stored file, and is refused while a scheduled post still references the track. Videos already rendered to MP4 keep their audio, since it's baked into the file.
+
+---
+
 ### Checking Status & Output
 
 Generation is **asynchronous**. `--wait` handles polling for you; otherwise track it manually:
@@ -207,9 +256,14 @@ postnitro schedule create \
 
 A post must have **either** a `--design-id` **or** non-empty `--post-content`. Hashtags are auto-extracted from captions.
 
+`--post-settings` carries a reel's video settings (`{"videoDuration":30,"audioId":"..."}`) and is **optional** — when omitted, the API fills each field from the settings the attached design was generated with, falling back to 30 seconds with no audio.
+
+`schedule list` takes an optional `--accounts <id,id>` filter. It filters **posts**, not the accounts inside them: a post targeting LinkedIn and Instagram is returned when you filter by either, and it still reports both. Unknown IDs match nothing rather than erroring.
+
 **Manage schedules**
 ```bash
 postnitro schedule list --from "2026-01-01" --to "2026-12-31"
+postnitro schedule list --from "2026-01-01" --to "2026-12-31" --accounts "<id>,<id>"  # only posts hitting these accounts
 postnitro schedule get <id>
 postnitro schedule update <id> ...same flags as create...   # REPLACES state — send the full intended body
 postnitro schedule delete <id> --yes
@@ -219,7 +273,7 @@ postnitro schedule delete <id> --yes
 
 ### One-shot: Create + Schedule
 
-Two commands create and schedule in a single call: `generate-and-schedule` (AI-generated) and `import-and-schedule` (your own content). Both accept `--post-type CAROUSEL|IMAGE`, the AI-image flags (`--generate-images` …), and all the scheduling options.
+Two commands create and schedule in a single call: `generate-and-schedule` (AI-generated) and `import-and-schedule` (your own content). Both accept `--post-type CAROUSEL|IMAGE|VIDEO` (a video also takes `--video-duration`/`--audio-id`), the AI-image flags (`--generate-images` …), and all the scheduling options.
 
 ```bash
 # AI-generated
@@ -532,14 +586,18 @@ postnitro carousel generate --context "topic" --type text --wait      # AI gener
 postnitro carousel import --file ./slides.json --wait                 # Import carousel (slides array)
 postnitro image generate --context "topic" --wait                     # AI generate single image
 postnitro image import --slide '{"heading":"..."}' --wait             # Import single image (one object)
-postnitro carousel status <embedPostId>                               # Check progress (also: image status)
-postnitro carousel output <embedPostId>                               # Get output + designId (also: image output)
+postnitro video generate --context "topic" --response-type MP4 --video-duration 30 --wait   # AI generate video
+postnitro video import --file ./scenes.json --response-type MP4 --video-duration 30 --wait  # Import video (slides = scenes)
+postnitro audio list                                                  # Audio ids for --audio-id
+postnitro audio delete <audioId> --yes                                # Delete a track
+postnitro carousel status <embedPostId>                               # Check progress (also: image/video status)
+postnitro carousel output <embedPostId>                               # Get output + designId (also: image/video output)
 
 # Schedule
 postnitro schedule create --status SCHEDULED --scheduled-at "<iso>" --design-id <id> \
   --selected-accounts '["<id>"]' --linkedin-post-settings '{"postType":"document","postTitle":"..."}' \
   --post-content '{"common":"caption"}'
-postnitro schedule list --from "<date>" --to "<date>"                 # List
+postnitro schedule list --from "<date>" --to "<date>"                 # List (add --accounts "<id>,<id>" to filter)
 postnitro schedule get <id>                                           # Get one
 postnitro schedule delete <id> --yes                                  # Delete
 

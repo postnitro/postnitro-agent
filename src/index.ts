@@ -8,6 +8,8 @@ import { registerBrandCommands } from "./commands/brand.js";
 import { registerPresetCommands } from "./commands/preset.js";
 import { registerCarouselCommands } from "./commands/carousel.js";
 import { registerImageCommands } from "./commands/image.js";
+import { registerVideoCommands } from "./commands/video.js";
+import { registerAudioCommands } from "./commands/audio.js";
 import { registerSocialCommands } from "./commands/social.js";
 import { registerScheduleCommands } from "./commands/schedule.js";
 import { registerGenerateAndScheduleCommand } from "./commands/generate-and-schedule.js";
@@ -18,10 +20,10 @@ const program = new Command();
 program
   .name("postnitro")
   .description(
-    "CLI for AI agents and scripts to generate and manage PostNitro content (carousels, brands, scheduling) via the PostNitro Embed API.\n\n" +
+    "CLI for AI agents and scripts to generate and manage PostNitro content (carousels, images, videos, brands, scheduling) via the PostNitro Embed API.\n\n" +
       "Every command prints JSON on success (stdout, exit 0) or JSON on failure (stderr, exit 1) — safe to pipe and parse."
   )
-  .version("1.2.0")
+  .version("1.3.0")
   .option("--api-key <key>", "PostNitro API key (falls back to POSTNITRO_API_KEY env var, then saved config)");
 
 registerAuthCommands(program);
@@ -31,6 +33,8 @@ registerBrandCommands(program);
 registerPresetCommands(program);
 registerCarouselCommands(program);
 registerImageCommands(program);
+registerVideoCommands(program);
+registerAudioCommands(program);
 registerSocialCommands(program);
 registerScheduleCommands(program);
 registerGenerateAndScheduleCommand(program);

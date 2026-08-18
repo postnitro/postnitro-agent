@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { readFile, writeFile, mkdir, unlink } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import type { ResponseType } from "./types.js";
+import type { SavedResponseType } from "./types.js";
 
 const CONFIG_DIR = process.env.POSTNITRO_CONFIG_DIR || join(homedir(), ".postnitro-cli");
 
@@ -10,18 +10,21 @@ export interface UserDefaults {
   templateId?: string;
   brandId?: string;
   presetId?: string;
-  responseType?: ResponseType;
+  responseType?: SavedResponseType;
   updatedAt: string;
 }
 
 /** Validates/uppercases a user-supplied response type. Returns undefined when none was given. */
-export function normalizeResponseType(value: string | undefined | null): ResponseType | undefined {
+export function normalizeResponseType(value: string | undefined | null): SavedResponseType | undefined {
   if (value === undefined || value === null) return undefined;
   const upper = value.toUpperCase();
   if (upper !== "PDF" && upper !== "PNG" && upper !== "DESIGN") {
-    throw new Error(`Invalid response type "${value}". Must be PDF, PNG, or DESIGN.`);
+    // MP4 is deliberately excluded: it only applies to video posts, and saving it
+    // as a default would break every carousel and image call. The video commands
+    // take it per call instead.
+    throw new Error(`Invalid response type "${value}". Must be PDF, PNG, or DESIGN (MP4 applies to video posts only — pass it to \`postnitro video\`).`);
   }
-  return upper as ResponseType;
+  return upper as SavedResponseType;
 }
 
 function hashKey(apiKey: string): string {
@@ -97,7 +100,7 @@ export async function resolveGenerationDefaults(
     presets: () => Promise<Array<{ id: string; label: string }>>;
   },
   options: { requirePreset?: boolean } = {}
-): Promise<{ templateId: string; brandId: string; presetId?: string; responseType: ResponseType }> {
+): Promise<{ templateId: string; brandId: string; presetId?: string; responseType: SavedResponseType }> {
   const saved = await getDefaults(apiKey);
 
   let templateId = params.templateId || saved?.templateId;

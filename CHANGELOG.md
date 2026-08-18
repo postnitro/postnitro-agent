@@ -5,6 +5,20 @@ All notable changes to the PostNitro CLI are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-08-09
+
+Adds video posts (the Embed API's `VIDEO` post type and `MP4` output), the audio commands that resolve an `audioId`, and an account filter on `schedule list`.
+
+### Added
+- **Video posts** — `postnitro video generate` / `video import` / `video status` / `video output` / `video import-template`. Slides are **scenes**, so `video import` takes the same slide array as `carousel import`. New flags `--video-duration <seconds>` (the whole video's length: at least 5, under 60 — required when rendering) and `--audio-id <id>` (an audio ID, never a URL).
+- **`MP4` response type**, video-only. A video accepts only `MP4` or `DESIGN`; `PDF`/`PNG` are rejected for a video and `MP4` is rejected for the other post types. Video commands default to `DESIGN`, and a saved `PDF`/`PNG` default is treated as `DESIGN` with a note in `warnings` rather than failing the call. `MP4` cannot be stored via `defaults set`, since it would break carousel and image calls.
+- **Audio commands** — `postnitro audio list` (the IDs used by `--audio-id` and a reel's `postSettings.audioId`) and `postnitro audio delete <id> --yes`. Uploading is done in the PostNitro app; the CLI lists and deletes only. Deletion is refused while a scheduled post still references the track.
+- **`--post-type VIDEO`** on `generate-and-schedule` and `import-and-schedule`, with `--video-duration`/`--audio-id`.
+- **`schedule list --accounts <id,id>`** — filter scheduled posts by social account. It filters *posts*, not the accounts within them: a post targeting two platforms is returned when you filter by either, and it still reports every account it targets. Unknown IDs match nothing rather than erroring.
+
+### Changed
+- A reel's `--post-settings` is now optional: when omitted, the API fills the duration and audio from the settings the attached design was generated with, falling back to 30 seconds with no audio.
+
 ## [1.2.0] - 2026-07-16
 
 Adds opt-in AI image generation (the Embed API's `generateImages` feature) and fixes the API base URL to the hosted endpoint.

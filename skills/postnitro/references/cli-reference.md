@@ -80,9 +80,46 @@ postnitro image output <embedPostId>               # file URL(s) + designId + ed
 - Infographic layout works on IMAGE too — set `layoutType: "infographic"` + `layoutConfig` (same schema as carousel; see below). Every column and content item needs a caller-provided `id`.
 - AI images: `--generate-images` (+ optional flags) works here too — see [AI image generation](#ai-image-generation-generateimages).
 
+## video
+
+Video posts. Slides are **scenes**, so `import` takes the same slide **array** as `carousel`; the extra input is the render length (and an optional audio track).
+
+```
+postnitro video import-template                    # prints the slide rules + video settings
+postnitro video generate --context <text> [--type text|article|x] [--instructions <text>]
+                         [--template-id] [--brand-id] [--preset-id] [--response-type MP4|DESIGN]
+                         [--video-duration <seconds>] [--audio-id <id>]
+                         [--requestor-id <id>] [--wait]
+postnitro video import (--slides <json> | --file <path>)
+                       [--template-id] [--brand-id] [--response-type MP4|DESIGN]
+                       [--video-duration <seconds>] [--audio-id <id>] [--requestor-id] [--wait]
+postnitro video status <embedPostId>               # progress + step logs
+postnitro video output <embedPostId>               # MP4 URL + designId + editorUrl
+```
+- **Response types:** only `MP4` (renders the video) and `DESIGN` (no render — finish it in the video maker). `PDF`/`PNG` are rejected for a video, and `MP4` is rejected for every other post type. Video commands default to `DESIGN`; a saved `PDF`/`PNG` default is treated as `DESIGN` with a note in `warnings`.
+- `--video-duration <seconds>`: the **whole video's** length, not per scene. At least 5, under 60. **Required** with `--response-type MP4`; optional for `DESIGN`.
+- `--audio-id <id>`: an audio **ID** from `postnitro audio list` — never a URL. The API rejects a URL, an ID from another workspace, or an ID naming a non-audio file. Omit for a silent video.
+- Slides follow the carousel rules exactly (1 `starting_slide` first, ≥1 `body_slide`, 1 `ending_slide` last); infographic layouts work on scenes too.
+- Rendering a video is slower than a carousel — typically 15-45s for `--wait` with `MP4`, and longer for designs with animations or GIFs (which use the enhanced renderer).
+- The duration/audio carry over automatically when the video is scheduled as a reel, so `--post-settings` is usually unnecessary.
+- AI images: `--generate-images` (+ optional flags) works here too — see [AI image generation](#ai-image-generation-generateimages).
+
+## audio
+
+Audio tracks used by video posts (`--audio-id`) and scheduled reels (`postSettings.audioId`). **Upload happens in the PostNitro app** — the CLI lists and deletes only.
+
+```
+postnitro audio list [--page <n>] [--limit <n>]   # { count, audios: [{ id, name, url, duration, artistName, source, createdAt }] }
+postnitro audio delete <id> --yes                 # destructive
+```
+- `id` is the value to pass as `--audio-id` / `postSettings.audioId`. `url` is for previewing; the API always wants the ID.
+- `duration` is the **track's** length in seconds and is independent of `--video-duration` — a longer track is simply cut off at the video's length.
+- An empty list means the workspace has no audio yet; the result includes a `note` saying so. Create the video without `--audio-id`, or upload a track in the app first.
+- **Destructive:** `audio delete` permanently removes the record and the stored file. It is refused (400) while a scheduled post still references the track — remove it from those posts first. Videos already rendered to MP4 keep their audio, since the track is baked into the file. Requires `--yes`.
+
 ## AI image generation (`generateImages`)
 
-Opt-in AI image generation, available on **every** generate/import command (carousel and image) and on `generate-and-schedule`. Images are generated and baked into the design before rendering, so they appear in the rendered file and in the editor.
+Opt-in AI image generation, available on **every** generate/import command (carousel, image, and video) and on `generate-and-schedule`. Images are generated and baked into the design before rendering, so they appear in the rendered file and in the editor.
 
 | Flag | Values | Default | Notes |
 |------|--------|---------|-------|
@@ -110,7 +147,7 @@ postnitro social disconnect <id> --yes # destructive
 ## schedule
 
 ```
-postnitro schedule list --from <date> --to <date>
+postnitro schedule list --from <date> --to <date> [--accounts <id,id>]
 postnitro schedule create --status DRAFT|SCHEDULED --scheduled-at <iso>
                           [--design-id <id>] [--file <json>]
                           [--post-content <json>] [--selected-accounts <json>]
@@ -125,30 +162,33 @@ postnitro schedule delete <id> --yes
 - Requires either `--design-id` or non-empty `--post-content`.
 - `--scheduled-at` must be a **future** ISO-8601 datetime (trailing `Z`).
 - Inline JSON flags override the same field in `--file`.
+- `--accounts <id,id>` (list only) filters by social account — comma-separated IDs from `postnitro social list`. It filters **posts**, not the accounts within them: a post targeting two platforms is returned when you filter by either, and it still reports every account it targets. Unknown IDs match nothing rather than erroring.
+- `--post-settings` carries a reel's video settings (`{"videoDuration":30,"audioId":"..."}`) and is **optional**: when omitted, the API fills each field from the settings the attached design was generated with, then falls back to 30 seconds with no audio. `videoDuration` must be at least 5 and under 60; `audioId` must be an audio ID in your workspace.
 
 ## generate-and-schedule
 
 ```
 postnitro generate-and-schedule --context <text> --status DRAFT|SCHEDULED --scheduled-at <iso>
-                                [--post-type CAROUSEL|IMAGE] [ ...all generate flags... ]
+                                [--post-type CAROUSEL|IMAGE|VIDEO] [--video-duration <s>] [--audio-id <id>]
+                                [ ...all generate flags... ]
                                 [--generate-images --image-context <text> ...]   # optional AI images
                                 [--design-id] [--file <json>]
                                 [--post-content] [--selected-accounts] [--*-post-settings] [--post-settings]
 ```
-Generates → waits → schedules in one call. `--post-type` defaults to `CAROUSEL` (use `IMAGE` for a single-image post). Also accepts the [AI image generation](#ai-image-generation-generateimages) flags. On scheduling failure the error includes the `designId` so you can retry `schedule create` without regenerating.
+Generates → waits → schedules in one call. `--post-type` defaults to `CAROUSEL` (use `IMAGE` for a single-image post, or `VIDEO` for a video — `VIDEO` also takes `--video-duration`/`--audio-id`, and only `MP4`/`DESIGN` response types). Also accepts the [AI image generation](#ai-image-generation-generateimages) flags. On scheduling failure the error includes the `designId` so you can retry `schedule create` without regenerating.
 
 ## import-and-schedule
 
 ```
 postnitro import-and-schedule --status DRAFT|SCHEDULED --scheduled-at <iso>
-                              [--post-type CAROUSEL|IMAGE]
+                              [--post-type CAROUSEL|IMAGE|VIDEO] [--video-duration <s>] [--audio-id <id>]
                               (--slides <json> | --slide <json> | --slides-file <path>)
                               [--template-id] [--brand-id] [--response-type] [--requestor-id]
                               [--generate-images --image-context <text> ...]   # optional AI images
                               [--design-id] [--file <json>]
                               [--post-content] [--selected-accounts] [--*-post-settings] [--post-settings]
 ```
-Imports your own content → waits → schedules in one call (the import-side counterpart of `generate-and-schedule`). `--post-type` defaults to `CAROUSEL` — pass `--slides` (array) for CAROUSEL or `--slide` (single object) for IMAGE; `--slides-file` reads either from a file.
+Imports your own content → waits → schedules in one call (the import-side counterpart of `generate-and-schedule`). `--post-type` defaults to `CAROUSEL` — pass `--slides` (array) for CAROUSEL or VIDEO, or `--slide` (single object) for IMAGE; `--slides-file` reads either from a file. A VIDEO also takes `--video-duration`/`--audio-id`.
 
 > **Flag note:** here `--file` is the **schedule body** (postContent/accounts/settings), matching `generate-and-schedule` — so slide content comes from `--slides` / `--slide` / `--slides-file`, not `--file`.
 
