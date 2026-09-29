@@ -282,7 +282,7 @@ export interface AudioItem {
 // Social accounts
 // ============================================================
 
-export type SocialPlatform = "linkedin" | "instagram" | "tiktok" | "threads";
+export type SocialPlatform = "linkedin" | "instagram" | "tiktok" | "threads" | "facebook";
 
 export interface SocialAccountSummary {
   id: string;
@@ -361,6 +361,19 @@ export interface ThreadsPostSettings {
 }
 
 /**
+ * 'carousel' is a multi-photo post; 'link_carousel' is swipeable link cards (2-10
+ * slides), and the other fields apply to it only.
+ */
+export interface FacebookPostSettings {
+  postType: "carousel" | "link_carousel" | "image" | "reel";
+  linkUrl?: string;
+  callToAction?: string | null;
+  showEndCard?: boolean;
+  useSlideTitles?: boolean;
+  useSlideDescriptions?: boolean;
+}
+
+/**
  * A scheduled reel's video render settings — the same shape as a VIDEO post's
  * {@link VideoSettings}. Optional: when omitted, the API fills each field from the
  * settings the attached design was generated with, then from 30 seconds / no audio.
@@ -380,6 +393,7 @@ export interface ScheduledPostRequest {
   tiktokPostSettings?: TiktokPostSettings;
   linkedinPostSettings?: LinkedinPostSettings;
   threadsPostSettings?: ThreadsPostSettings;
+  facebookPostSettings?: FacebookPostSettings;
   postSettings?: ReelPostSettings;
 }
 
@@ -396,6 +410,7 @@ export interface ScheduledPost {
   linkedinPostSettings: LinkedinPostSettings | null;
   tiktokPostSettings: TiktokPostSettings | null;
   threadsPostSettings: ThreadsPostSettings | null;
+  facebookPostSettings: FacebookPostSettings | null;
   postContents: Array<{ platform: string; text: string; hashtags: string[] }>;
   designDetails: {
     id: string;

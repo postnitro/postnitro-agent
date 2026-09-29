@@ -153,7 +153,7 @@ postnitro schedule create --status DRAFT|SCHEDULED --scheduled-at <iso>
                           [--post-content <json>] [--selected-accounts <json>]
                           [--instagram-post-settings <json>] [--tiktok-post-settings <json>]
                           [--linkedin-post-settings <json>] [--threads-post-settings <json>]
-                          [--post-settings <json>]
+                          [--facebook-post-settings <json>] [--post-settings <json>]
 postnitro schedule get <id>
 postnitro schedule update <id> ...same flags as create...   # REPLACES state
 postnitro schedule delete <id> --yes
@@ -209,6 +209,7 @@ Keys: `common`, `linkedin`, `instagram`, `tiktok`, `facebook`, `threads`.
 | `--instagram-post-settings` | `{"postType":"carousel\|image\|reel","postAsStory":false}` |
 | `--tiktok-post-settings` | `{"postType":"carousel\|reel","privacyLevel":"PUBLIC_TO_EVERYONE\|MUTUAL_FOLLOW_FRIENDS\|SELF_ONLY","canComment":true,"canDuet":true,"canStitch":true,"autoAddMusic":false,"postTitle":null,"isBrandedContent":false,"isYourBrand":false,"isThirdPartyBrand":false,"isAIGeneratedContent":true}` |
 | `--threads-post-settings` | `{"postType":"carousel\|image\|reel"}` |
+| `--facebook-post-settings` | `{"postType":"carousel\|link_carousel\|image\|reel"}`; `link_carousel` also takes `linkUrl` (required when scheduled), `callToAction`, `showEndCard`, `useSlideTitles`, `useSlideDescriptions`. Accounts are Pages; design required when scheduled |
 | `--post-settings` (reel) | `{"videoDuration":30,"audioId":"..."}` |
 
 ## Slide schema (import)
