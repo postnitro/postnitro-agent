@@ -28,6 +28,7 @@ const SCHEDULE_JSON_FIELDS: Array<[keyof ScheduledPostRequest, string, "object" 
   ["tiktokPostSettings", "--tiktok-post-settings", "object"],
   ["linkedinPostSettings", "--linkedin-post-settings", "object"],
   ["threadsPostSettings", "--threads-post-settings", "object"],
+  ["facebookPostSettings", "--facebook-post-settings", "object"],
   ["postSettings", "--post-settings", "object"],
 ];
 
@@ -49,6 +50,10 @@ export function addScheduleJsonOptions(cmd: Command): Command {
       "LinkedIn settings as a JSON object, e.g. '{\"postType\":\"document\",\"postTitle\":\"My title\"}'"
     )
     .option("--threads-post-settings <json>", "Threads settings as a JSON object, e.g. '{\"postType\":\"carousel\"}'")
+    .option(
+      "--facebook-post-settings <json>",
+      "Facebook Page settings as a JSON object, e.g. '{\"postType\":\"carousel\"}' or '{\"postType\":\"link_carousel\",\"linkUrl\":\"https://example.com\",\"callToAction\":\"LEARN_MORE\"}'"
+    )
     .option("--post-settings <json>", "Reel settings as a JSON object (required for reel post types), e.g. '{\"videoDuration\":30}'");
 }
 

@@ -13,6 +13,7 @@ export function scheduleWarnings(req: ScheduledPostRequest): string[] {
   if (req.tiktokPostSettings) withMedia.push(`TikTok (${req.tiktokPostSettings.postType})`);
   if (req.linkedinPostSettings) withMedia.push(`LinkedIn (${req.linkedinPostSettings.postType})`);
   if (req.threadsPostSettings) withMedia.push(`Threads (${req.threadsPostSettings.postType})`);
+  if (req.facebookPostSettings) withMedia.push(`Facebook (${req.facebookPostSettings.postType})`);
   if (!hasDesign && withMedia.length > 0) {
     warnings.push(
       `No design is attached (designId is null), but these platforms specify a media post type: ${withMedia.join(", ")}. ` +
@@ -28,6 +29,13 @@ export function scheduleWarnings(req: ScheduledPostRequest): string[] {
         "LinkedIn postType is 'document' but postTitle is missing or not 5-90 characters — scheduling will be rejected until a valid title is provided."
       );
     }
+  }
+
+  const fb = req.facebookPostSettings;
+  if (req.status === "SCHEDULED" && fb?.postType === "link_carousel" && !(fb.linkUrl ?? "").trim()) {
+    warnings.push(
+      "Facebook postType is 'link_carousel' but linkUrl is missing — scheduling will be rejected until an http(s) link is provided."
+    );
   }
   return warnings;
 }

@@ -18,7 +18,7 @@ The skill is defined in [`SKILL.md`](SKILL.md) at the repo root (with a copy und
 
 # PostNitro CLI
 
-**Create and schedule on-brand social posts — carousels and single images — from the command line.** Built for AI agents and scripts: turn a topic, article, or X thread — or your own content — into a published LinkedIn, Instagram, TikTok, or Threads post.
+**Create and schedule on-brand social posts — carousels and single images — from the command line.** Built for AI agents and scripts: turn a topic, article, or X thread — or your own content — into a published LinkedIn, Instagram, TikTok, Threads, or Facebook Page post.
 
 PostNitro creates on-brand carousels and single-image posts and schedules them to your social accounts; this CLI is a command-line interface to the [PostNitro Embed API](https://postnitro.ai). Every command prints JSON on stdout (exit 0) or stderr (exit 1) — no colors, tables, or prompts to strip.
 
@@ -250,7 +250,7 @@ postnitro schedule create \
 - `--design-id <id>` — the carousel design to attach (from `carousel output`)
 - `--post-content <json>` — captions object keyed by platform (`common`, `linkedin`, `instagram`, `tiktok`, `facebook`, `threads`)
 - `--selected-accounts <json>` — array of social-account IDs
-- `--instagram-post-settings` / `--tiktok-post-settings` / `--linkedin-post-settings` / `--threads-post-settings` — per-platform settings (JSON)
+- `--instagram-post-settings` / `--tiktok-post-settings` / `--linkedin-post-settings` / `--threads-post-settings` / `--facebook-post-settings` — per-platform settings (JSON)
 - `--post-settings <json>` — reel settings (`videoDuration`, `audioId`)
 - `--file <path>` — a JSON file with any of the above (inline flags override it)
 
@@ -363,6 +363,18 @@ postnitro schedule create \
   --post-content '{"threads":"Caption"}'
 ```
 
+### Facebook
+```bash
+postnitro schedule create \
+  --status SCHEDULED --scheduled-at "2026-12-31T12:00:00Z" \
+  --design-id <designId> \
+  --selected-accounts '["facebook-page-account-id"]' \
+  --facebook-post-settings '{"postType":"carousel"}' \
+  --post-content '{"facebook":"Caption"}'
+```
+
+`carousel` posts every slide as one multi-photo post. For swipeable link cards use `{"postType":"link_carousel","linkUrl":"https://example.com","callToAction":"LEARN_MORE"}` — see [PLATFORM_SETTINGS.md](PLATFORM_SETTINGS.md#facebook----facebook-post-settings).
+
 ---
 
 ## Features for AI Agents
@@ -449,7 +461,7 @@ done
 **Deep-dive guides:**
 - **[QUICK_START.md](QUICK_START.md)** — zero to a scheduled carousel in minutes
 - **[HOW_TO_RUN.md](HOW_TO_RUN.md)** — install & run methods (npm, npx, skill, local dev)
-- **[PLATFORM_SETTINGS.md](PLATFORM_SETTINGS.md)** — LinkedIn/Instagram/TikTok/Threads settings schemas
+- **[PLATFORM_SETTINGS.md](PLATFORM_SETTINGS.md)** — LinkedIn/Instagram/TikTok/Threads/Facebook settings schemas
 - **[PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md)** — code architecture
 - **[FEATURES.md](FEATURES.md)** — full feature list
 - **[PUBLISHING.md](PUBLISHING.md)** — npm release guide

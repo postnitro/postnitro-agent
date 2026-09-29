@@ -103,6 +103,27 @@ PostNitro carousels render as PDFs, which LinkedIn publishes best as **documents
 
 ---
 
+## Facebook — `--facebook-post-settings`
+
+Facebook accounts are Pages. A design is required when `--status SCHEDULED`.
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `postType` | `"carousel" \| "link_carousel" \| "image" \| "reel"` | Required. `carousel` = every slide in one multi-photo post; `link_carousel` = swipeable link cards; `image` = single slide; `reel` = video (16:9 to 9:16) |
+| `linkUrl` | `string` | `link_carousel` only. Absolute http(s) URL every card links to. Required when scheduled |
+| `callToAction` | `string \| null` | `link_carousel` only. Button type, e.g. `LEARN_MORE`, `SHOP_NOW`, `SIGN_UP`, `WATCH_VIDEO` (full list in the platform-settings docs). Omit for no button |
+| `showEndCard` | `boolean` | `link_carousel` only. Facebook's end card linking to the Page. Default `true` |
+| `useSlideTitles` | `boolean` | `link_carousel` only. Each slide's title becomes its card headline. Default `false` |
+| `useSlideDescriptions` | `boolean` | `link_carousel` only. Each slide's description becomes its card description. Default `false` |
+
+A `link_carousel` needs 2–10 slides (Facebook shows up to 5 and picks which), and Facebook only accepts its card images for links on a domain the Page's business has verified. Use `carousel` otherwise.
+
+```json
+{ "postType": "link_carousel", "linkUrl": "https://example.com", "callToAction": "LEARN_MORE", "showEndCard": true }
+```
+
+---
+
 ## Reel timing — `--post-settings`
 
 Required for reel post types.
