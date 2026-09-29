@@ -91,6 +91,30 @@ postnitro schedule create --status SCHEDULED --scheduled-at "2026-12-31T13:00:00
   --post-content '{"common":"New carousel 🚀 #remotework"}'
 ```
 
+## Schedule to a Facebook Page
+
+Facebook accounts are Pages (`accountType: "page"`). `carousel` posts every slide as one
+multi-photo post:
+
+```bash
+DID=$(postnitro carousel import --file examples/import-infographics.json --wait | jq -r .designId)
+PAGE=$(postnitro social list | jq -r 'first(.accounts[] | select(.platform=="facebook").id)')
+postnitro schedule create --status SCHEDULED --scheduled-at "2026-12-31T13:00:00Z" \
+  --design-id "$DID" --selected-accounts "[\"$PAGE\"]" \
+  --facebook-post-settings '{"postType":"carousel"}' \
+  --post-content '{"facebook":"New carousel 🚀 #remotework"}'
+```
+
+For swipeable cards that link to your site, use `link_carousel` (2–10 slides; the link's domain
+must be verified for the Page's business in Meta Business Settings):
+
+```bash
+postnitro schedule create --status SCHEDULED --scheduled-at "2026-12-31T13:00:00Z" \
+  --design-id "$DID" --selected-accounts "[\"$PAGE\"]" \
+  --facebook-post-settings '{"postType":"link_carousel","linkUrl":"https://example.com","callToAction":"LEARN_MORE","useSlideTitles":true}' \
+  --post-content '{"facebook":"Read the full guide 👉"}'
+```
+
 ## Audio tracks
 
 ```bash
