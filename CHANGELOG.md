@@ -5,6 +5,28 @@ All notable changes to the PostNitro CLI are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.1] - 2026-09-29
+
+Adds scheduling to Facebook Pages. First release since 1.3.0 (1.4.0 was not published).
+
+### Added
+- **`--facebook-post-settings <json>`** on `schedule create`, `schedule update`, `generate-and-schedule` and `import-and-schedule`, and as `facebookPostSettings` in a `--file` schedule body. Four post types:
+  - `carousel`: every slide in one multi-photo post
+  - `link_carousel`: swipeable cards (2–10 slides) that all link to `linkUrl`, with optional `callToAction` (e.g. `LEARN_MORE`, `SHOP_NOW`), `showEndCard`, `useSlideTitles` and `useSlideDescriptions`
+  - `image`: a single-slide design
+  - `reel`: a video, published as a Reel
+- **Facebook Pages in `social list`**, under `facebook` (`accountType: "page"`). Use their IDs in `--selected-accounts`, and caption them with the `facebook` key of `--post-content`.
+- **Warning** when a `SCHEDULED` `link_carousel` has no `linkUrl`, since the API rejects it.
+
+### Changed
+- The no-design warning now covers Facebook settings as well.
+- `PLATFORM_SETTINGS.md`, the README and the skill document the Facebook settings, with examples. The skill's content tips and gotchas cover when to use `carousel` versus `link_carousel`.
+
+### Notes
+- A design is required to schedule to a Facebook Page.
+- Facebook only accepts `link_carousel` card images for links on a domain the Page's business has verified in Meta Business Settings. Use `carousel` for designs linking elsewhere.
+- Requires the Embed API release that accepts `facebookPostSettings`; earlier API versions reject the field.
+
 ## [1.3.0] - 2026-08-09
 
 Adds video posts (the Embed API's `VIDEO` post type and `MP4` output), the audio commands that resolve an `audioId`, and an account filter on `schedule list`.
