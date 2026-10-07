@@ -23,7 +23,7 @@ program
     "CLI for AI agents and scripts to generate and manage PostNitro content (carousels, images, videos, brands, scheduling) via the PostNitro Embed API.\n\n" +
       "Every command prints JSON on success (stdout, exit 0) or JSON on failure (stderr, exit 1) — safe to pipe and parse."
   )
-  .version("1.3.0")
+  .version("1.5.0")
   .option("--api-key <key>", "PostNitro API key (falls back to POSTNITRO_API_KEY env var, then saved config)");
 
 registerAuthCommands(program);

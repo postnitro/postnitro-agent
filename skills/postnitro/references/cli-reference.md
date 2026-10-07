@@ -153,7 +153,8 @@ postnitro schedule create --status DRAFT|SCHEDULED --scheduled-at <iso>
                           [--post-content <json>] [--selected-accounts <json>]
                           [--instagram-post-settings <json>] [--tiktok-post-settings <json>]
                           [--linkedin-post-settings <json>] [--threads-post-settings <json>]
-                          [--facebook-post-settings <json>] [--post-settings <json>]
+                          [--facebook-post-settings <json>] [--pinterest-post-settings <json>]
+                          [--post-settings <json>]
 postnitro schedule get <id>
 postnitro schedule update <id> ...same flags as create...   # REPLACES state
 postnitro schedule delete <id> --yes
@@ -199,7 +200,7 @@ Also accepts the [AI image generation](#ai-image-generation-generateimages) flag
 ## Captions — `postContent`
 
 JSON object keyed by platform. At least one non-empty caption unless `--design-id` is set. Hashtags auto-extracted.
-Keys: `common`, `linkedin`, `instagram`, `tiktok`, `facebook`, `threads`.
+Keys: `common`, `linkedin`, `instagram`, `tiktok`, `facebook`, `threads`, `pinterest` (Pin description; first 800 chars published).
 
 ## Platform settings
 
@@ -210,6 +211,7 @@ Keys: `common`, `linkedin`, `instagram`, `tiktok`, `facebook`, `threads`.
 | `--tiktok-post-settings` | `{"postType":"carousel\|reel","privacyLevel":"PUBLIC_TO_EVERYONE\|MUTUAL_FOLLOW_FRIENDS\|SELF_ONLY","canComment":true,"canDuet":true,"canStitch":true,"autoAddMusic":false,"postTitle":null,"isBrandedContent":false,"isYourBrand":false,"isThirdPartyBrand":false,"isAIGeneratedContent":true}` |
 | `--threads-post-settings` | `{"postType":"carousel\|image\|reel"}` |
 | `--facebook-post-settings` | `{"postType":"carousel\|link_carousel\|image\|reel"}`; `link_carousel` also takes `linkUrl` (required when scheduled), `callToAction`, `showEndCard`, `useSlideTitles`, `useSlideDescriptions`. Accounts are Pages; design required when scheduled |
+| `--pinterest-post-settings` | `{"postType":"carousel\|image\|reel","title":"...","link":"https://..."}` — `carousel` = carousel Pin (2–5 slides), `image` = image Pin, `reel` = video Pin; `title` optional (≤100 chars), `link` optional http(s) URL. Accounts are boards (one account per board, no board field); required when a board is selected and a design is set; design required when scheduled; any size except ultra-wide (>21:9), 2:3 recommended |
 | `--post-settings` (reel) | `{"videoDuration":30,"audioId":"..."}` |
 
 ## Slide schema (import)

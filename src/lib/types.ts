@@ -282,7 +282,7 @@ export interface AudioItem {
 // Social accounts
 // ============================================================
 
-export type SocialPlatform = "linkedin" | "instagram" | "tiktok" | "threads" | "facebook";
+export type SocialPlatform = "linkedin" | "instagram" | "tiktok" | "threads" | "facebook" | "pinterest";
 
 export interface SocialAccountSummary {
   id: string;
@@ -330,6 +330,8 @@ export interface SchedulePostContent {
   tiktok?: string;
   facebook?: string;
   threads?: string;
+  /** Becomes the Pin description; only the first 800 characters are published. */
+  pinterest?: string;
 }
 
 export interface InstagramPostSettings {
@@ -374,6 +376,19 @@ export interface FacebookPostSettings {
 }
 
 /**
+ * Pinterest accounts are boards (each board is its own account). 'carousel' is a
+ * carousel Pin (2-5 slides; 1 slide publishes as an image Pin), 'image' a single
+ * image Pin, 'reel' a video Pin.
+ */
+export interface PinterestPostSettings {
+  postType: "carousel" | "image" | "reel";
+  /** Pin title, max 100 characters. */
+  title?: string | null;
+  /** Destination http(s) URL the Pin links to. */
+  link?: string | null;
+}
+
+/**
  * A scheduled reel's video render settings — the same shape as a VIDEO post's
  * {@link VideoSettings}. Optional: when omitted, the API fills each field from the
  * settings the attached design was generated with, then from 30 seconds / no audio.
@@ -394,6 +409,7 @@ export interface ScheduledPostRequest {
   linkedinPostSettings?: LinkedinPostSettings;
   threadsPostSettings?: ThreadsPostSettings;
   facebookPostSettings?: FacebookPostSettings;
+  pinterestPostSettings?: PinterestPostSettings;
   postSettings?: ReelPostSettings;
 }
 
@@ -411,6 +427,7 @@ export interface ScheduledPost {
   tiktokPostSettings: TiktokPostSettings | null;
   threadsPostSettings: ThreadsPostSettings | null;
   facebookPostSettings: FacebookPostSettings | null;
+  pinterestPostSettings: PinterestPostSettings | null;
   postContents: Array<{ platform: string; text: string; hashtags: string[] }>;
   designDetails: {
     id: string;

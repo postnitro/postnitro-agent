@@ -14,6 +14,7 @@ export function scheduleWarnings(req: ScheduledPostRequest): string[] {
   if (req.linkedinPostSettings) withMedia.push(`LinkedIn (${req.linkedinPostSettings.postType})`);
   if (req.threadsPostSettings) withMedia.push(`Threads (${req.threadsPostSettings.postType})`);
   if (req.facebookPostSettings) withMedia.push(`Facebook (${req.facebookPostSettings.postType})`);
+  if (req.pinterestPostSettings) withMedia.push(`Pinterest (${req.pinterestPostSettings.postType})`);
   if (!hasDesign && withMedia.length > 0) {
     warnings.push(
       `No design is attached (designId is null), but these platforms specify a media post type: ${withMedia.join(", ")}. ` +
@@ -36,6 +37,15 @@ export function scheduleWarnings(req: ScheduledPostRequest): string[] {
     warnings.push(
       "Facebook postType is 'link_carousel' but linkUrl is missing — scheduling will be rejected until an http(s) link is provided."
     );
+  }
+
+  const pin = req.pinterestPostSettings;
+  if (pin && (pin.title ?? "").trim().length > 100) {
+    warnings.push("Pinterest title is longer than 100 characters — scheduling will be rejected until it is shortened.");
+  }
+  const pinCaption = pin ? (req.postContent?.pinterest ?? req.postContent?.common) : undefined;
+  if (pinCaption && pinCaption.length > 800) {
+    warnings.push("Pinterest caption is longer than 800 characters — only the first 800 are published as the Pin description.");
   }
   return warnings;
 }
