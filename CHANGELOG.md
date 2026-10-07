@@ -5,6 +5,28 @@ All notable changes to the PostNitro CLI are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-10-07
+
+Adds scheduling to Pinterest boards.
+
+### Added
+- **`--pinterest-post-settings <json>`** on `schedule create`, `schedule update`, `generate-and-schedule` and `import-and-schedule`, and as `pinterestPostSettings` in a `--file` schedule body. Fields: `postType` (required) plus optional `title` (max 100 characters) and `link` (http(s) URL). Three post types:
+  - `carousel`: a carousel Pin (2–5 slides; a 1-slide design publishes as an image Pin)
+  - `image`: a single image Pin
+  - `reel`: a video Pin (reel timing via `--post-settings`, as on other platforms)
+- **Pinterest boards in `social list`**, under `pinterest` (`accountType: "board"`). Each connected board is its own account; use its ID in `--selected-accounts` and caption it with the `pinterest` key of `--post-content`.
+- **Warnings** when a Pinterest `title` exceeds 100 characters (the API rejects it) and when the Pinterest caption exceeds 800 characters (only the first 800 are published as the Pin description).
+
+### Changed
+- The no-design warning now covers Pinterest settings as well.
+- `PLATFORM_SETTINGS.md`, the README and the skill document the Pinterest settings, with examples, content tips and gotchas.
+- The CLI's `--version`, `package-lock.json` and the Claude plugin manifests now report the same version as `package.json`. The plugin manifests also list Facebook and Pinterest.
+
+### Notes
+- A design is required to schedule to a Pinterest board, and `pinterestPostSettings` is required whenever a Pinterest board is selected and a design is attached.
+- A `carousel` Pin takes 2–5 slides; more than 5 fails at publish time. Any design size works except ultra-wide (wider than 21:9); 2:3 is recommended.
+- Requires the Embed API release that accepts `pinterestPostSettings`; earlier API versions reject the field.
+
 ## [1.4.1] - 2026-09-29
 
 Adds scheduling to Facebook Pages. First release since 1.3.0 (1.4.0 was not published).

@@ -1,13 +1,13 @@
 ---
 name: postnitro
-description: Create on-brand social media carousels, single-image posts, and short videos, and schedule them to LinkedIn, Instagram, TikTok, Threads, and Facebook Pages from a single command. Turn a topic, article, or X thread into a finished multi-slide post, image, or video (with an optional audio track) — or import your own content — then publish or draft it automatically. Fully scriptable (JSON in, JSON out), so an AI agent can run the entire create-to-schedule workflow. Use this skill whenever the user wants to create a carousel, image post, video, reel, slide post, or multi-slide content, repurpose an article, blog post, or X thread into slides or a video, or automate and schedule social media posts. Use it to create and schedule content through PostNitro, not as a general social-media strategy advisor. Requires a PostNitro API key.
+description: Create on-brand social media carousels, single-image posts, and short videos, and schedule them to LinkedIn, Instagram, TikTok, Threads, Facebook Pages, and Pinterest from a single command. Turn a topic, article, or X thread into a finished multi-slide post, image, or video (with an optional audio track) — or import your own content — then publish or draft it automatically. Fully scriptable (JSON in, JSON out), so an AI agent can run the entire create-to-schedule workflow. Use this skill whenever the user wants to create a carousel, image post, video, reel, slide post, or multi-slide content, repurpose an article, blog post, or X thread into slides or a video, or automate and schedule social media posts. Use it to create and schedule content through PostNitro, not as a general social-media strategy advisor. Requires a PostNitro API key.
 homepage: https://postnitro.ai
 metadata: {"openclaw":{"emoji":"🎠","primaryEnv":"POSTNITRO_API_KEY","requires":{"bins":[],"env":["POSTNITRO_API_KEY"]}}}
 ---
 
 # PostNitro — Create & Schedule Social Posts
 
-PostNitro creates on-brand social media posts — multi-slide carousels, single images, and short videos — and schedules them across LinkedIn, Instagram, TikTok, Threads, and Facebook Pages. This skill drives it from the command line, so an agent can take a topic, article, or your own content and produce a finished, scheduled post in one workflow. Every command is JSON in / JSON out — safe to script and chain.
+PostNitro creates on-brand social media posts — multi-slide carousels, single images, and short videos — and schedules them across LinkedIn, Instagram, TikTok, Threads, Facebook Pages, and Pinterest boards. This skill drives it from the command line, so an agent can take a topic, article, or your own content and produce a finished, scheduled post in one workflow. Every command is JSON in / JSON out — safe to script and chain.
 
 ## Setup
 
@@ -169,7 +169,7 @@ postnitro schedule create \
   --post-content '{"common":"Caption with #hashtags"}'
 ```
 
-Pass the settings flag for each platform among `--selected-accounts`: `--linkedin-post-settings`, `--instagram-post-settings`, `--tiktok-post-settings`, `--threads-post-settings`, `--facebook-post-settings` (shapes in [references/cli-reference.md](references/cli-reference.md)). For a Facebook Page:
+Pass the settings flag for each platform among `--selected-accounts`: `--linkedin-post-settings`, `--instagram-post-settings`, `--tiktok-post-settings`, `--threads-post-settings`, `--facebook-post-settings`, `--pinterest-post-settings` (shapes in [references/cli-reference.md](references/cli-reference.md)). For a Facebook Page:
 
 ```bash
 postnitro schedule create \
@@ -179,6 +179,18 @@ postnitro schedule create \
   --selected-accounts '["<facebookPageAccountId>"]' \
   --facebook-post-settings '{"postType":"carousel"}' \
   --post-content '{"facebook":"Caption with #hashtags"}'
+```
+
+For a Pinterest board (each connected board is its own account):
+
+```bash
+postnitro schedule create \
+  --status SCHEDULED \
+  --scheduled-at "2026-12-31T13:00:00Z" \
+  --design-id <designId> \
+  --selected-accounts '["<pinterestBoardAccountId>"]' \
+  --pinterest-post-settings '{"postType":"carousel","title":"Pin title","link":"https://example.com"}' \
+  --post-content '{"pinterest":"Pin description with #hashtags"}'
 ```
 
 ### 5. One-shot: create + schedule
@@ -274,6 +286,7 @@ done
 - **TikTok**: trendy, punchy, 4–7 slides, hook on slide 1.
 - **X / Threads**: data-driven, 3–6 slides, provocative opening.
 - **Facebook**: community-focused, 3–8 slides. Use `postType: "carousel"` to post every slide as one multi-photo post; `"link_carousel"` makes swipeable cards that all link to a `linkUrl` (2–10 slides, optional `callToAction` such as `LEARN_MORE`). Videos post as Reels (`"reel"`).
+- **Pinterest**: evergreen, searchable, 2–5 slides in a 2:3 design. `postType: "carousel"` is a carousel Pin, `"image"` a single image Pin, `"reel"` a video Pin. Add an optional `title` (≤100 chars) and `link`; the caption becomes the Pin description (first 800 chars published).
 
 ## Common Gotchas
 
@@ -284,11 +297,12 @@ done
 5. **`Missing --brand-id ... multiple candidates`** — pass the ID or save a default with `defaults set`.
 6. **LinkedIn `document` rejected** — `postType:"document"` needs a 5–90 char `postTitle`.
 7. **Facebook `link_carousel` rejected or failing** — it needs a `linkUrl` (absolute http(s) URL) when scheduled and 2–10 slides, and Facebook only accepts its card images for links on a domain the Page's business has verified. When unsure, use `postType:"carousel"` (multi-photo, no link needed). Facebook accounts are Pages, and a design is required to schedule.
-8. **Empty post** — a scheduled post needs either `--design-id` or non-empty `--post-content`.
-9. **Destructive commands** — `social disconnect` and `schedule delete` require `--yes`.
-10. **`SCHEDULED` publishes live** — use `DRAFT` when unsure; confirm time/account with the user first.
-11. **`responseType`** — the CLI defaults to `PDF` (pass `--response-type PNG` for individual slide images, or `DESIGN` to skip rendering and only create the design). Note: the underlying API now defaults to `DESIGN` when omitted, but the CLI always sends `PDF` explicitly, so CLI behavior is unchanged.
-12. **Credits vary** — AI generation ≈ 2 credits/slide; content import ≈ 1 credit/slide. Warn before large batches.
+8. **Pinterest Pin rejected or failing** — `--pinterest-post-settings` (with `postType`) is required when a Pinterest board is selected and a design is attached, and a design is required to schedule. A `carousel` Pin takes 2–5 slides (1 slide publishes as an image Pin; more than 5 fails), `title` is max 100 chars, `link` must be an http(s) URL, and ultra-wide designs (wider than 21:9) are rejected. Pinterest accounts are boards — there is no board field.
+9. **Empty post** — a scheduled post needs either `--design-id` or non-empty `--post-content`.
+10. **Destructive commands** — `social disconnect` and `schedule delete` require `--yes`.
+11. **`SCHEDULED` publishes live** — use `DRAFT` when unsure; confirm time/account with the user first.
+12. **`responseType`** — the CLI defaults to `PDF` (pass `--response-type PNG` for individual slide images, or `DESIGN` to skip rendering and only create the design). Note: the underlying API now defaults to `DESIGN` when omitted, but the CLI always sends `PDF` explicitly, so CLI behavior is unchanged.
+13. **Credits vary** — AI generation ≈ 2 credits/slide; content import ≈ 1 credit/slide. Warn before large batches.
 
 ## Credits & Pricing
 
@@ -341,6 +355,9 @@ postnitro schedule create --status SCHEDULED|DRAFT --scheduled-at "<iso>" --desi
 postnitro schedule create --status SCHEDULED --scheduled-at "<iso>" --design-id <id> \
   --selected-accounts '["<facebookPageId>"]' --facebook-post-settings '{"postType":"carousel"}' \
   --post-content '{"facebook":"caption"}'
+postnitro schedule create --status SCHEDULED --scheduled-at "<iso>" --design-id <id> \
+  --selected-accounts '["<pinterestBoardId>"]' --pinterest-post-settings '{"postType":"carousel","title":"...","link":"https://..."}' \
+  --post-content '{"pinterest":"caption"}'
 postnitro schedule list --from "<date>" --to "<date>" | get <id> | delete <id> --yes
 
 # One-shot: create + schedule (both take --post-type + AI-image flags)

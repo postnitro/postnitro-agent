@@ -21,11 +21,12 @@ A JSON object keyed by platform. At least one non-empty caption is required **un
   "instagram": "Instagram-specific caption",
   "tiktok":    "TikTok-specific caption",
   "facebook":  "Facebook-specific caption",
-  "threads":   "Threads-specific caption"
+  "threads":   "Threads-specific caption",
+  "pinterest": "Pinterest Pin description (first 800 characters are published)"
 }
 ```
 
-Recognized keys: `common`, `linkedin`, `instagram`, `tiktok`, `facebook`, `threads`.
+Recognized keys: `common`, `linkedin`, `instagram`, `tiktok`, `facebook`, `threads`, `pinterest`.
 Hashtags are extracted automatically from each non-empty caption.
 
 ---
@@ -120,6 +121,24 @@ A `link_carousel` needs 2–10 slides (Facebook shows up to 5 and picks which), 
 
 ```json
 { "postType": "link_carousel", "linkUrl": "https://example.com", "callToAction": "LEARN_MORE", "showEndCard": true }
+```
+
+---
+
+## Pinterest — `--pinterest-post-settings`
+
+Pinterest accounts are boards (`accountType: "board"`): each board you connect is its own account, so pick the board by its account ID in `--selected-accounts` (there is no board field). Required when a Pinterest account is selected and a design is attached; a design is required when `--status SCHEDULED`.
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `postType` | `"carousel" \| "image" \| "reel"` | Required. `carousel` = carousel Pin (2–5 slides; 1 slide publishes as an image Pin, more than 5 fails); `image` = single image Pin; `reel` = video Pin (also takes `--post-settings`) |
+| `title` | `string` | Optional Pin title, max 100 characters |
+| `link` | `string` | Optional absolute http(s) URL the Pin links to |
+
+The `pinterest` key of `--post-content` becomes the Pin description; only its first 800 characters are published. Any design size works except ultra-wide (wider than 21:9); 2:3 is recommended.
+
+```json
+{ "postType": "carousel", "title": "5 tips for remote teams", "link": "https://example.com/guide" }
 ```
 
 ---

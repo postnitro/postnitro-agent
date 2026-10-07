@@ -29,6 +29,7 @@ const SCHEDULE_JSON_FIELDS: Array<[keyof ScheduledPostRequest, string, "object" 
   ["linkedinPostSettings", "--linkedin-post-settings", "object"],
   ["threadsPostSettings", "--threads-post-settings", "object"],
   ["facebookPostSettings", "--facebook-post-settings", "object"],
+  ["pinterestPostSettings", "--pinterest-post-settings", "object"],
   ["postSettings", "--post-settings", "object"],
 ];
 
@@ -37,7 +38,7 @@ export function addScheduleJsonOptions(cmd: Command): Command {
   return cmd
     .option(
       "--post-content <json>",
-      "Captions as a JSON object keyed by platform, e.g. '{\"common\":\"Launch day! 🚀\"}' (keys: common, linkedin, instagram, tiktok, facebook, threads)"
+      "Captions as a JSON object keyed by platform, e.g. '{\"common\":\"Launch day! 🚀\"}' (keys: common, linkedin, instagram, tiktok, facebook, threads, pinterest)"
     )
     .option("--selected-accounts <json>", "Social account IDs as a JSON array, e.g. '[\"acct_789\"]'")
     .option(
@@ -53,6 +54,10 @@ export function addScheduleJsonOptions(cmd: Command): Command {
     .option(
       "--facebook-post-settings <json>",
       "Facebook Page settings as a JSON object, e.g. '{\"postType\":\"carousel\"}' or '{\"postType\":\"link_carousel\",\"linkUrl\":\"https://example.com\",\"callToAction\":\"LEARN_MORE\"}'"
+    )
+    .option(
+      "--pinterest-post-settings <json>",
+      "Pinterest board settings as a JSON object, e.g. '{\"postType\":\"carousel\",\"title\":\"My Pin\",\"link\":\"https://example.com\"}' (postType: carousel|image|reel)"
     )
     .option("--post-settings <json>", "Reel settings as a JSON object (required for reel post types), e.g. '{\"videoDuration\":30}'");
 }

@@ -115,6 +115,24 @@ postnitro schedule create --status SCHEDULED --scheduled-at "2026-12-31T13:00:00
   --post-content '{"facebook":"Read the full guide 👉"}'
 ```
 
+## Schedule to a Pinterest board
+
+Pinterest accounts are boards (`accountType: "board"`); each connected board is its own
+account, so choose the board by its account ID. `carousel` publishes a carousel Pin (2–5
+slides), `image` a single image Pin, `reel` a video Pin. A 2:3 design works best:
+
+```bash
+DID=$(postnitro carousel import --file examples/import-infographics.json --wait | jq -r .designId)
+BOARD=$(postnitro social list | jq -r 'first(.accounts[] | select(.platform=="pinterest").id)')
+postnitro schedule create --status SCHEDULED --scheduled-at "2026-12-31T13:00:00Z" \
+  --design-id "$DID" --selected-accounts "[\"$BOARD\"]" \
+  --pinterest-post-settings '{"postType":"carousel","title":"Remote work, done right","link":"https://example.com/guide"}' \
+  --post-content '{"pinterest":"5 habits of high-performing remote teams #remotework"}'
+```
+
+The `pinterest` caption becomes the Pin description (only the first 800 characters are
+published). `title` (max 100 characters) and `link` are optional.
+
 ## Audio tracks
 
 ```bash

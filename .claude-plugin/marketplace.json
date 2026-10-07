@@ -5,13 +5,13 @@
     "email": "muneeb@postnitro.ai"
   },
   "metadata": {
-    "description": "Create on-brand social carousels and schedule them across LinkedIn, Instagram, TikTok, and Threads.",
-    "version": "1.2.0"
+    "description": "Create on-brand social carousels and schedule them across LinkedIn, Instagram, TikTok, Threads, Facebook Pages, and Pinterest.",
+    "version": "1.5.0"
   },
   "plugins": [
     {
       "name": "postnitro",
-      "description": "Create on-brand social media carousels and schedule them to LinkedIn, Instagram, TikTok, and Threads — generate from a topic, article, or X thread, or import your own slides. Scriptable from the CLI.",
+      "description": "Create on-brand social media carousels and schedule them to LinkedIn, Instagram, TikTok, Threads, Facebook Pages, and Pinterest — generate from a topic, article, or X thread, or import your own slides. Scriptable from the CLI.",
       "source": "./",
       "strict": false,
       "skills": [
