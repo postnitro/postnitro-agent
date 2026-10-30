@@ -59,7 +59,10 @@ export function addScheduleJsonOptions(cmd: Command): Command {
       "--pinterest-post-settings <json>",
       "Pinterest board settings as a JSON object, e.g. '{\"postType\":\"carousel\",\"title\":\"My Pin\",\"link\":\"https://example.com\"}' (postType: carousel|image|reel)"
     )
-    .option("--post-settings <json>", "Reel settings as a JSON object (required for reel post types), e.g. '{\"videoDuration\":30}'");
+    .option(
+      "--post-settings <json>",
+      "A reel's audio as a JSON object, e.g. '{\"audioId\":\"media_123\"}'. Optional: without it a reel takes its design's audio. A reel runs as long as its design, so there is no length to set"
+    );
 }
 
 /**

@@ -1,4 +1,4 @@
-import { Command } from "commander";
+import { Command, Option } from "commander";
 import { PostNitroClient, extractDesignId } from "./client.js";
 import { getDefaults, resolveApiKey, resolveGenerationDefaults } from "./config-store.js";
 import { printResult, action } from "./output.js";
@@ -59,6 +59,7 @@ export function summarizeOutput(data: PostOutputData): Record<string, unknown> {
   if (result.type !== undefined) summary.outputType = result.type;
   if (result.mimeType !== undefined) summary.mimeType = result.mimeType;
   if (result.data !== undefined) summary.data = result.data;
+  if (typeof result.duration === "number") summary.duration = result.duration;
   return summary;
 }
 
@@ -119,47 +120,42 @@ export function resolveGenerateImages(opts: Record<string, any>): GenerateImages
 // Video posts
 // ============================================================
 
-export const VIDEO_MIN_DURATION_SECONDS = 5;
-/** Exclusive: the duration must stay under a minute. */
-export const VIDEO_MAX_DURATION_SECONDS = 60;
-
-/** Adds the video render flags to a video generate/import command. */
+/**
+ * Adds the video flags to a video generate/import command, or an edit. All are
+ * optional: a video is animated without them, and runs as long as its motion
+ * takes. `--video-duration` is still taken, so scripts that pass it keep working,
+ * but it's hidden and never sent.
+ */
 export function addVideoOptions(command: Command): Command {
   return command
     .option(
-      "--video-duration <seconds>",
-      `Length of the rendered video in seconds (${VIDEO_MIN_DURATION_SECONDS} to under ${VIDEO_MAX_DURATION_SECONDS}). Required with --response-type MP4`
+      "--motion-style <name-or-id>",
+      "How every scene moves: a built-in style's name (clean, bold, ...; none keeps it still) or a saved style's id — see `postnitro motion styles`. Default: the template's own motion, else clean"
     )
-    .option("--audio-id <id>", "Media ID of an audio track to lay over the video — an ID, not a URL (see `postnitro audio list`)");
+    .option("--sequence <id>", "A saved sequence's id: its animations on every scene, over the style — see `postnitro motion sequences`")
+    .option("--audio-id <id>", "Media ID of an audio track to lay over the video — an ID, not a URL (see `postnitro audio list`)")
+    .addOption(new Option("--video-duration <seconds>", "No longer used: a video runs as long as its motion takes").hideHelp());
 }
 
-/**
- * Builds `videoSettings` from the CLI flags, or `undefined` when neither was given.
- * The duration is parsed and range-checked here so bad input fails before the API call.
- */
+/** A flag's value, trimmed; given but empty is an error, so a typo'd variable doesn't pass as "no style". */
+function flagValue(value: unknown, flag: string): string | undefined {
+  if (value === undefined) return undefined;
+  const trimmed = String(value).trim();
+  if (!trimmed) throw new Error(`${flag} needs a value.`);
+  return trimmed;
+}
+
+/** Builds `videoSettings` from the video flags, or `undefined` when none was given. */
 export function resolveVideoSettings(opts: Record<string, any>): VideoSettings | undefined {
-  const hasDuration = opts.videoDuration !== undefined;
-  const audioId = typeof opts.audioId === "string" ? opts.audioId.trim() : "";
-
-  if (!hasDuration && !audioId) return undefined;
-
-  if (!hasDuration) {
-    throw new Error("--audio-id also needs --video-duration: the video's length is what videoSettings is built around.");
-  }
-
-  const videoDuration = Number(opts.videoDuration);
-  if (!Number.isFinite(videoDuration)) {
-    throw new Error(`Invalid --video-duration "${opts.videoDuration}". Must be a number of seconds.`);
-  }
-  if (videoDuration < VIDEO_MIN_DURATION_SECONDS || videoDuration >= VIDEO_MAX_DURATION_SECONDS) {
-    throw new Error(
-      `Invalid --video-duration "${opts.videoDuration}". Must be at least ${VIDEO_MIN_DURATION_SECONDS} seconds and less than ${VIDEO_MAX_DURATION_SECONDS} seconds.`
-    );
-  }
-
-  const settings: VideoSettings = { videoDuration };
-  if (audioId) settings.audioId = audioId;
-  return settings;
+  const motionStyle = flagValue(opts.motionStyle, "--motion-style");
+  const sequenceId = flagValue(opts.sequence, "--sequence");
+  const audioId = flagValue(opts.audioId, "--audio-id");
+  if (!motionStyle && !sequenceId && !audioId) return undefined;
+  return {
+    ...(motionStyle ? { motionStyle } : {}),
+    ...(sequenceId ? { sequenceId } : {}),
+    ...(audioId ? { audioId } : {}),
+  };
 }
 
 /**
@@ -213,16 +209,6 @@ export async function resolveVideoOutput(
   return resolveVideoResponseType(requested, saved?.responseType);
 }
 
-/** An MP4 render needs a duration; fail here with guidance instead of at the API. */
-export function assertVideoSettings(responseType: VideoResponseType, videoSettings?: VideoSettings): void {
-  if (responseType === "MP4" && !videoSettings) {
-    throw new Error(
-      `--response-type MP4 requires --video-duration (${VIDEO_MIN_DURATION_SECONDS} to under ${VIDEO_MAX_DURATION_SECONDS} seconds), plus an optional --audio-id. ` +
-        `Use --response-type DESIGN to create the design without rendering a video.`
-    );
-  }
-}
-
 /** Pulls the best-effort `GENERATE_IMAGES` job-log step from a status response, if present. */
 export function extractImageGenerationStep(
   status: PostStatusData
@@ -252,11 +238,14 @@ export async function waitAndPrint(
   });
 }
 
-/** Registers shared `status`/`output` inspection subcommands on a post command group (carousel, image). */
-export function registerPostInspectionCommands(group: Command, noun: string): void {
+/**
+ * Registers shared `status`/`output` inspection subcommands on a post command group
+ * (carousel, image, video, design). `label` names what they inspect.
+ */
+export function registerPostInspectionCommands(group: Command, noun: string, label = `${noun} post`): void {
   group
     .command("status <embedPostId>")
-    .description(`Check generation status and processing logs for a ${noun} post`)
+    .description(`Check generation status and processing logs for a ${label}`)
     .action(
       action(async (embedPostId: string, _opts, cmd: Command) => {
         const { client } = await clientFor(cmd);
@@ -273,7 +262,7 @@ export function registerPostInspectionCommands(group: Command, noun: string): vo
 
   group
     .command("output <embedPostId>")
-    .description(`Retrieve the generated output for a completed ${noun} post`)
+    .description(`Retrieve the generated output for a completed ${label}`)
     .action(
       action(async (embedPostId: string, _opts, cmd: Command) => {
         const { client } = await clientFor(cmd);

@@ -27,20 +27,24 @@ postnitro carousel import --slides "$(cat examples/import-default.json)" --wait
 
 ## Import a video
 
-Scenes use the same slide array as a carousel — one slide per scene. `--video-duration` is
-required when you want the rendered MP4 back.
+Scenes use the same slide array as a carousel — one slide per scene. A video comes animated
+and runs as long as its motion takes; ask for `MP4` when you want the rendered file back.
 
 ```bash
-# Rendered MP4, silent
+# Rendered MP4, animated, silent
 postnitro video import --file examples/import-video.json \
-  --response-type MP4 --video-duration 30 --wait
+  --response-type MP4 --wait
 
-# With an audio track (IDs come from `postnitro audio list`, never a URL)
+# In a bolder style, with an audio track (IDs come from `postnitro audio list`, never a URL)
 AUDIO=$(postnitro audio list | jq -r '.audios[0].id')
 postnitro video import --file examples/import-video.json \
-  --response-type MP4 --video-duration 30 --audio-id "$AUDIO" --wait
+  --response-type MP4 --motion-style bold --audio-id "$AUDIO" --wait
 
-# Design only — no render; set the duration later in the video maker
+# A saved style and sequence (ids from `postnitro motion styles` / `postnitro motion sequences`)
+postnitro video import --file examples/import-video.json \
+  --motion-style <styleId> --sequence <sequenceId> --response-type MP4 --wait
+
+# Design only — no render; finish it in the video maker
 postnitro video import --file examples/import-video.json --wait
 ```
 
@@ -62,7 +66,21 @@ postnitro carousel generate --context "https://x.com/user/status/123" --type x -
 
 # A video instead — each AI-written slide becomes a scene
 postnitro video generate --context "3 habits that make remote teams faster" \
-  --response-type MP4 --video-duration 30 --wait
+  --response-type MP4 --wait
+```
+
+## Edit a post you made
+
+An edit replaces every slide in place, so start from what's there. The design keeps its
+`designId`, so anything scheduled with it shows the edit.
+
+```bash
+postnitro design get <designId> > design.json
+# change design.json's "slides" (keep every slide you want), then:
+postnitro design edit <designId> --file design.json --response-type PDF --wait
+
+# An image post's one slide, inline
+postnitro design edit <designId> --slides '{"heading":"New headline","description":"Now with more"}'
 ```
 
 ## Schedule a finished design

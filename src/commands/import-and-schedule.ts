@@ -10,7 +10,6 @@ import {
   addVideoOptions,
   resolveVideoSettings,
   resolveVideoOutput,
-  assertVideoSettings,
 } from "../lib/generation.js";
 import { scheduleWarnings, deriveDocumentTitle } from "../lib/schedule-warnings.js";
 import { addScheduleJsonOptions, resolveScheduleBody } from "../lib/schedule-input.js";
@@ -51,7 +50,7 @@ export function registerImportAndScheduleCommand(program: Command): void {
         const isVideo = postType === "VIDEO";
         const videoSettings = resolveVideoSettings(opts);
         if (!isVideo && videoSettings) {
-          throw new Error(`--video-duration/--audio-id only apply to --post-type VIDEO, not ${postType}.`);
+          throw new Error(`--motion-style/--sequence/--audio-id only apply to --post-type VIDEO, not ${postType}.`);
         }
 
         const defaults = await resolveDefaultsFor(client, apiKey, isVideo ? { ...opts, responseType: undefined } : opts, false);
@@ -65,7 +64,6 @@ export function registerImportAndScheduleCommand(program: Command): void {
           const resolved = await resolveVideoOutput(apiKey, opts.responseType);
           responseType = resolved.responseType;
           responseTypeNote = resolved.note;
-          assertVideoSettings(resolved.responseType, videoSettings);
         } else if (String(opts.responseType ?? "").toUpperCase() === "MP4") {
           throw new Error(`--response-type MP4 is only valid with --post-type VIDEO, not ${postType}.`);
         }

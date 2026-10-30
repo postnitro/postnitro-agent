@@ -19,27 +19,21 @@ export interface SlideFlags {
   file: string;
 }
 
-/**
- * Resolves a CAROUSEL slides array from inline JSON (wins) or a file path.
- * Accepts a bare array or `{ "slides": [...] }`.
- */
-export async function resolveCarouselSlides(
-  inline: string | undefined,
-  file: string | undefined,
-  flags: SlideFlags
-): Promise<Slide[]> {
-  let parsed: unknown;
+/** Reads slide JSON from inline JSON (wins) or a file path. `what` names it in the error when neither is given. */
+async function readSlideJson(inline: string | undefined, file: string | undefined, flags: SlideFlags, what: string): Promise<unknown> {
   if (inline !== undefined) {
     try {
-      parsed = JSON.parse(inline);
+      return JSON.parse(inline);
     } catch (e) {
       throw new Error(`${flags.inline} must be valid JSON: ${(e as Error).message}`);
     }
-  } else if (file) {
-    parsed = await readJsonFile<unknown>(file);
-  } else {
-    throw new Error(`Provide slides via ${flags.inline} '<json>' or ${flags.file} <path>.`);
   }
+  if (file) return readJsonFile<unknown>(file);
+  throw new Error(`Provide ${what} via ${flags.inline} '<json>' or ${flags.file} <path>.`);
+}
+
+/** A CAROUSEL (or VIDEO) slides array, from a bare array or `{ "slides": [...] }`. */
+function carouselSlidesFrom(parsed: unknown): Slide[] {
   const slides = Array.isArray(parsed) ? parsed : (parsed as { slides?: unknown })?.slides;
   if (!Array.isArray(slides) || slides.length < 3) {
     throw new Error("Slides must be an array with at least 3 entries (starting_slide, body_slide(s), ending_slide).");
@@ -47,28 +41,8 @@ export async function resolveCarouselSlides(
   return slides as Slide[];
 }
 
-/**
- * Resolves a single IMAGE slide object from inline JSON (wins) or a file path.
- * Accepts a bare object or a `{ "slides": {...} }` wrapper. Rejects arrays — those are CAROUSEL-only.
- */
-export async function resolveImageSlide(
-  inline: string | undefined,
-  file: string | undefined,
-  flags: SlideFlags
-): Promise<ImageSlide> {
-  let parsed: unknown;
-  if (inline !== undefined) {
-    try {
-      parsed = JSON.parse(inline);
-    } catch (e) {
-      throw new Error(`${flags.inline} must be valid JSON: ${(e as Error).message}`);
-    }
-  } else if (file) {
-    parsed = await readJsonFile<unknown>(file);
-  } else {
-    throw new Error(`Provide the image slide via ${flags.inline} '<json>' or ${flags.file} <path>.`);
-  }
-
+/** A single IMAGE slide, from a bare object or a `{ "slides": {...} }` wrapper. Rejects arrays — those are CAROUSEL-only. */
+function imageSlideFrom(parsed: unknown): ImageSlide {
   const slide =
     parsed && typeof parsed === "object" && !Array.isArray(parsed) && "slides" in parsed
       ? (parsed as { slides?: unknown }).slides
@@ -91,4 +65,47 @@ export async function resolveImageSlide(
     throw new Error(`Invalid image slide field(s): ${invalid.join(", ")}. Allowed: ${IMAGE_SLIDE_FIELDS.join(", ")}.`);
   }
   return slide as ImageSlide;
+}
+
+/**
+ * Resolves a CAROUSEL slides array from inline JSON (wins) or a file path.
+ * Accepts a bare array or `{ "slides": [...] }`.
+ */
+export async function resolveCarouselSlides(
+  inline: string | undefined,
+  file: string | undefined,
+  flags: SlideFlags
+): Promise<Slide[]> {
+  return carouselSlidesFrom(await readSlideJson(inline, file, flags, "slides"));
+}
+
+/**
+ * Resolves a single IMAGE slide object from inline JSON (wins) or a file path.
+ * Accepts a bare object or a `{ "slides": {...} }` wrapper. Rejects arrays — those are CAROUSEL-only.
+ */
+export async function resolveImageSlide(
+  inline: string | undefined,
+  file: string | undefined,
+  flags: SlideFlags
+): Promise<ImageSlide> {
+  return imageSlideFrom(await readSlideJson(inline, file, flags, "the image slide"));
+}
+
+/**
+ * Resolves an edit's new slides, whose shape is the design's post type: an array
+ * for a CAROUSEL or VIDEO, one object for an IMAGE. Either may come bare or under
+ * `slides`, so `design get`'s output, changed, can be passed back as it is (only
+ * its `slides` are read). The API checks them against the design's own type.
+ */
+export async function resolveEditSlides(
+  inline: string | undefined,
+  file: string | undefined,
+  flags: SlideFlags
+): Promise<Slide[] | ImageSlide> {
+  const parsed = await readSlideJson(inline, file, flags, "the new slides");
+  const slides =
+    parsed && typeof parsed === "object" && !Array.isArray(parsed) && "slides" in parsed
+      ? (parsed as { slides?: unknown }).slides
+      : parsed;
+  return Array.isArray(slides) ? carouselSlidesFrom(slides) : imageSlideFrom(slides);
 }

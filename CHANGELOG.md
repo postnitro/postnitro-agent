@@ -5,6 +5,27 @@ All notable changes to the PostNitro CLI are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Videos come animated and as long as their motion takes; posts made through the API can be read back and edited in place.
+
+### Added
+- **`--motion-style <name|id>`** and **`--sequence <id>`** on `video generate`, `video import`, `generate-and-schedule`, `import-and-schedule` and `design edit`: a built-in style by name (`clean`, `bold`, …; `none` keeps a video still) or a saved style by id, and a saved sequence over it.
+- **`motion styles`** and **`motion sequences`** list the built-in and saved styles and the saved sequences, with the ids those flags take.
+- **`design get <designId>`** reads a post made through the API in the shape import takes, with its brand.
+- **`design edit <designId>`** replaces all its slides in place (`--file`, which takes `design get`'s output, or `--slides`), keeping its `designId`, so a scheduled post shows the edit. 1 credit per slide. With `design status` and `design output` for the edit.
+- **`duration`** (seconds) on a video's output.
+- **A failed post's kept design**: when `--wait` ends in a failure that left a design behind, such as a video too long for an MP4, the error carries its `designId`, `editorUrl` and `duration`, and the `embedPostId`.
+- **`POSTNITRO_API_URL`** points the CLI at another Embed API, such as staging.
+
+### Changed
+- **Videos are animated by default** (the template's own motion, else `clean`) and **run as long as their motion takes**, up to 2:00. `--response-type MP4` no longer needs a length, and `--audio-id` no longer needs one either.
+- **`--video-duration` is hidden and ignored.** Scripts that still pass it keep working.
+- **`--post-settings`** for a reel is its audio, `{"audioId":"..."}`: a reel runs as long as its design. A `videoDuration` in it is ignored by the API.
+
+### Notes
+- Requires the Embed API release with motion styles, read and edit (`/motion-style`, `/motion-sequence`, `GET /post/{designId}`, `POST /post/edit`).
+
 ## [1.5.0] - 2026-10-07
 
 Adds scheduling to Pinterest boards.

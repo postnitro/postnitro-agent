@@ -8,7 +8,7 @@ export function printResult(data: unknown): void {
 /** Prints an error as JSON on stderr and exits non-zero — keeps stdout clean JSON-only for agents. */
 export function failWith(error: unknown): never {
   const payload = error instanceof PostNitroApiError
-    ? { success: false, error: { message: error.message, statusCode: error.statusCode } }
+    ? { success: false, error: { message: error.message, statusCode: error.statusCode, ...error.details } }
     : { success: false, error: { message: error instanceof Error ? error.message : String(error) } };
 
   process.stderr.write(JSON.stringify(payload, null, 2) + "\n");
