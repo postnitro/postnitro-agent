@@ -120,11 +120,16 @@ export function resolveGenerateImages(opts: Record<string, any>): GenerateImages
 // Video posts
 // ============================================================
 
+/** The narrator's voices and tones, the editor's: a voiceover is chosen by them, the AI writing it. */
+export const VOICES = ["alloy", "ash", "ballad", "coral", "echo", "fable", "nova", "onyx", "sage", "shimmer", "verse"];
+const MAX_TONE_CHARS = 80;
+
 /**
  * Adds the video flags to a video generate/import command, or an edit. All are
  * optional: a video is animated without them, and runs as long as its motion
- * takes. `--video-duration` is still taken, so scripts that pass it keep working,
- * but it's hidden and never sent.
+ * and narration take. `--video-duration` is still taken, so scripts that pass it
+ * keep working, but it's hidden and never sent; `--audio-id` is the older name of
+ * `--background-music-id`.
  */
 export function addVideoOptions(command: Command): Command {
   return command
@@ -133,7 +138,15 @@ export function addVideoOptions(command: Command): Command {
       "How every scene moves: a built-in style's name (clean, bold, ...; none keeps it still) or a saved style's id — see `postnitro motion styles`. Default: the template's own motion, else clean"
     )
     .option("--sequence <id>", "A saved sequence's id: its animations on every scene, over the style — see `postnitro motion sequences`")
-    .option("--audio-id <id>", "Media ID of an audio track to lay over the video — an ID, not a URL (see `postnitro audio list`)")
+    .option("--background-music-id <id>", "Media ID of an audio track to play under the video — an ID, not a URL (see `postnitro audio list`)")
+    .option("--background-music-volume <percent>", "The music's volume, 0 to 100 (default 100); lowered to 30% under narration")
+    .option("--audio-id <id>", "The older name of --background-music-id, still taken")
+    .option("--voiceover", "Add an AI voiceover: the AI writes a line for every scene and records it. Costs the plan's AI tokens, not API credits")
+    .option("--no-voiceover", "On an edit: take the video's narration off")
+    .option("--voice <name>", `The voiceover's voice: ${VOICES.join(", ")} (default coral). Implies --voiceover`)
+    .option("--voice-tone <tone>", "The voiceover's tone: upbeat (default), calm, professional, storyteller, or your own words, up to 80 characters. Implies --voiceover")
+    .addOption(new Option("--captions", "Show the voiceover's words as captions (the default)").hideHelp())
+    .option("--no-captions", "Hide the voiceover's captions")
     .addOption(new Option("--video-duration <seconds>", "No longer used: a video runs as long as its motion takes").hideHelp());
 }
 
@@ -145,17 +158,48 @@ function flagValue(value: unknown, flag: string): string | undefined {
   return trimmed;
 }
 
-/** Builds `videoSettings` from the video flags, or `undefined` when none was given. */
+/**
+ * Builds `videoSettings` from the video flags, or `undefined` when none was given. The music
+ * goes under its new name whichever flag named it, and a voiceover is asked for by any of its
+ * flags; the API fills in what's left out.
+ */
 export function resolveVideoSettings(opts: Record<string, any>): VideoSettings | undefined {
   const motionStyle = flagValue(opts.motionStyle, "--motion-style");
   const sequenceId = flagValue(opts.sequence, "--sequence");
-  const audioId = flagValue(opts.audioId, "--audio-id");
-  if (!motionStyle && !sequenceId && !audioId) return undefined;
-  return {
+  const musicId = flagValue(opts.backgroundMusicId, "--background-music-id");
+  const olderId = flagValue(opts.audioId, "--audio-id");
+  if (musicId && olderId) throw new Error("Give --background-music-id, or --audio-id, its older name, not both.");
+  const backgroundMusicId = musicId ?? olderId;
+
+  let backgroundMusicVolume: number | undefined;
+  if (opts.backgroundMusicVolume !== undefined) {
+    backgroundMusicVolume = Number(opts.backgroundMusicVolume);
+    if (!Number.isFinite(backgroundMusicVolume) || backgroundMusicVolume < 0 || backgroundMusicVolume > 100) {
+      throw new Error(`Invalid --background-music-volume "${opts.backgroundMusicVolume}". Must be 0 to 100, its volume in percent.`);
+    }
+  }
+
+  const voice = flagValue(opts.voice, "--voice");
+  if (voice && !VOICES.includes(voice)) throw new Error(`Invalid --voice "${voice}". Must be one of: ${VOICES.join(", ")}.`);
+  const tone = flagValue(opts.voiceTone, "--voice-tone");
+  if (tone && tone.length > MAX_TONE_CHARS) throw new Error(`--voice-tone is up to ${MAX_TONE_CHARS} characters.`);
+  const captions = typeof opts.captions === "boolean" ? opts.captions : undefined;
+  const asksVoice = opts.voiceover === true || Boolean(voice) || Boolean(tone) || captions !== undefined;
+  if (opts.voiceover === false && asksVoice) throw new Error("--no-voiceover takes the narration off: it goes with no other voiceover flag.");
+  const voiceover = opts.voiceover === false
+    ? false
+    : asksVoice
+      ? { ...(voice ? { voice } : {}), ...(tone ? { tone } : {}), ...(captions !== undefined ? { captions } : {}) }
+      : undefined;
+
+  const settings: VideoSettings = {
     ...(motionStyle ? { motionStyle } : {}),
     ...(sequenceId ? { sequenceId } : {}),
-    ...(audioId ? { audioId } : {}),
+    ...(backgroundMusicId ? { backgroundMusicId } : {}),
+    ...(backgroundMusicVolume !== undefined ? { backgroundMusicVolume } : {}),
+    ...(voiceover !== undefined ? { voiceover } : {}),
   };
+  return Object.keys(settings).length ? settings : undefined;
 }
 
 /**

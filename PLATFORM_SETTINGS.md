@@ -150,10 +150,10 @@ is ignored). Without it, a reel takes the audio its design was made with, if any
 
 | Field | Type | Notes |
 |-------|------|-------|
-| `audioId` | `string` | Optional audio track ID, from `postnitro audio list` |
+| `backgroundMusicId` | `string` | Optional audio track ID, from `postnitro audio list`. `audioId`, its older name, still works |
 
 ```json
-{ "audioId": "audio-123" }
+{ "backgroundMusicId": "audio-123" }
 ```
 
 ---

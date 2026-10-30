@@ -50,7 +50,7 @@ export function registerImportAndScheduleCommand(program: Command): void {
         const isVideo = postType === "VIDEO";
         const videoSettings = resolveVideoSettings(opts);
         if (!isVideo && videoSettings) {
-          throw new Error(`--motion-style/--sequence/--audio-id only apply to --post-type VIDEO, not ${postType}.`);
+          throw new Error(`The video flags (--motion-style, --sequence, --background-music-id, --voiceover, ...) only apply to --post-type VIDEO, not ${postType}.`);
         }
 
         const defaults = await resolveDefaultsFor(client, apiKey, isVideo ? { ...opts, responseType: undefined } : opts, false);

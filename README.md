@@ -184,7 +184,7 @@ postnitro video generate --context "3 habits that make remote teams faster" \
 # Import your own scenes, in a bolder style, with an audio track
 AUDIO=$(postnitro audio list | jq -r '.audios[0].id')
 postnitro video import --file ./scenes.json \
-  --response-type MP4 --motion-style bold --audio-id "$AUDIO" --wait
+  --response-type MP4 --motion-style bold --background-music-id "$AUDIO" --wait
 
 # Design only — no render; finish it in the video maker
 postnitro video generate --context "..." --wait
@@ -198,7 +198,9 @@ postnitro video output <embedPostId>
 - `--response-type MP4|DESIGN` — a video accepts **nothing else** (`PDF`/`PNG` are rejected, and `MP4` is rejected for other post types). Defaults to `DESIGN`; a saved `PDF`/`PNG` default is treated as `DESIGN` and noted in `warnings`.
 - `--motion-style <name-or-id>` — how every scene moves: a built-in style's name (`clean`, `bold`, …; `none` keeps it still) or a saved style's id, from `postnitro motion styles`. Optional: a video is animated without it, by its template's own motion, else `clean`.
 - `--sequence <id>` — a saved sequence's id, from `postnitro motion sequences`: its animations on every scene, over the style.
-- `--audio-id <id>` — an audio **ID** from `postnitro audio list`, never a URL. Omit for a silent video.
+- `--background-music-id <id>` — the music: an audio **ID** from `postnitro audio list`, never a URL. Omit for no music. `--audio-id`, its older name, still works.
+- `--background-music-volume <0-100>` — the music's volume (default 100). It's lowered to 30% while the voiceover speaks.
+- `--voiceover` — an **AI voiceover**: the AI writes a spoken line for every scene and records it, with its words as captions. `--voice <name>` (`alloy`, `ash`, `ballad`, `coral` (default), `echo`, `fable`, `nova`, `onyx`, `sage`, `shimmer`, `verse`) and `--voice-tone <tone>` (`upbeat` (default), `calm`, `professional`, `storyteller`, or your own words, up to 80 characters) imply it; `--no-captions` hides the captions. No script is taken. Each scene lasts as long as its line. It costs the plan's **AI tokens** (the script's, and 5,000 a minute of audio), not API credits, and is best-effort: with the tokens used up the video is made without it, and the status's `VOICEOVER` step says why. On `post edit`, a narrated video is narrated again in its voice and tone; `--no-voiceover` takes it off.
 
 **There is no length to set:** a video runs as long as its motion takes, and the output's `duration` gives it in seconds. Up to 2:00 renders as an MP4. A longer one still makes its design, but the MP4 fails, and the error names the design (`designId`, `editorUrl`, `duration`) to shorten in the editor. `--video-duration`, from older versions, is still accepted and ignored.
 
@@ -239,7 +241,7 @@ postnitro post output <embedPostId>
 ```
 
 - An edit **replaces every slide**, so send back the ones to keep too. `--file` takes the slides, or `post get`'s output, whose `slides` it reads.
-- The design keeps its `designId`, name, look, size and brand, and a video its style and audio unless `--motion-style`, `--sequence` or `--audio-id` give new ones. Anything scheduled with it shows the edit.
+- The design keeps its `designId`, name, look, size and brand, and a video its style and audio unless `--motion-style`, `--sequence`, `--background-music-id` or the voiceover flags give new ones. Anything scheduled with it shows the edit.
 - `--response-type` is `DESIGN` (the default), `PDF` or `PNG`, or `MP4`/`DESIGN` for a video. Saved defaults don't apply to an edit.
 - It also takes `--requestor-id`, the AI-image flags and `--wait`. It costs **1 credit per slide** sent.
 - A post still being made has no design to read or edit yet: wait until it's `COMPLETED`. A slide whose title was turned off in the editor comes back without a `heading`; give it one, since import needs it.
@@ -251,11 +253,11 @@ postnitro post output <embedPostId>
 Audio for video posts and reels. **Uploading happens in the PostNitro app** — the CLI lists and deletes only:
 
 ```bash
-postnitro audio list                     # ids to pass as --audio-id
+postnitro audio list                     # ids to pass as --background-music-id
 postnitro audio delete <audioId> --yes   # destructive
 ```
 
-`audio list` returns `{ id, name, url, duration, artistName, source, createdAt }` per track. Use `id` for `--audio-id` (and for a reel's `postSettings.audioId`); `url` is only for previewing. A track's `duration` is its own — a longer track is cut off at the video's length.
+`audio list` returns `{ id, name, url, duration, artistName, source, createdAt }` per track. Use `id` for `--background-music-id` (and for a reel's `postSettings.backgroundMusicId`); `url` is only for previewing. A track's `duration` is its own — a longer track is cut off at the video's length.
 
 `audio delete` removes the record **and** the stored file, and is refused while a scheduled post still references the track. Videos already rendered to MP4 keep their audio, since it's baked into the file.
 
@@ -294,12 +296,12 @@ postnitro schedule create \
 - `--post-content <json>` — captions object keyed by platform (`common`, `linkedin`, `instagram`, `tiktok`, `facebook`, `threads`, `pinterest`)
 - `--selected-accounts <json>` — array of social-account IDs
 - `--instagram-post-settings` / `--tiktok-post-settings` / `--linkedin-post-settings` / `--threads-post-settings` / `--facebook-post-settings` / `--pinterest-post-settings` — per-platform settings (JSON)
-- `--post-settings <json>` — a reel's audio (`audioId`)
+- `--post-settings <json>` — a reel's music (`backgroundMusicId`, or `audioId`, its older name)
 - `--file <path>` — a JSON file with any of the above (inline flags override it)
 
 A post must have **either** a `--design-id` **or** non-empty `--post-content`. Hashtags are auto-extracted from captions.
 
-`--post-settings` carries a reel's audio (`{"audioId":"..."}`) and is **optional** — when omitted, the reel takes the audio the attached design was made with, if any. A reel runs as long as its design, so there's no length to set (a `videoDuration` sent is ignored).
+`--post-settings` carries a reel's audio (`{"backgroundMusicId":"..."}`) and is **optional** — when omitted, the reel takes the audio the attached design was made with, if any. A reel runs as long as its design, so there's no length to set (a `videoDuration` sent is ignored).
 
 `schedule list` takes an optional `--accounts <id,id>` filter. It filters **posts**, not the accounts inside them: a post targeting LinkedIn and Instagram is returned when you filter by either, and it still reports both. Unknown IDs match nothing rather than erroring.
 
@@ -316,7 +318,7 @@ postnitro schedule delete <id> --yes
 
 ### One-shot: Create + Schedule
 
-Two commands create and schedule in a single call: `generate-and-schedule` (AI-generated) and `import-and-schedule` (your own content). Both accept `--post-type CAROUSEL|IMAGE|VIDEO` (a video also takes `--motion-style`/`--sequence`/`--audio-id`), the AI-image flags (`--generate-images` …), and all the scheduling options.
+Two commands create and schedule in a single call: `generate-and-schedule` (AI-generated) and `import-and-schedule` (your own content). Both accept `--post-type CAROUSEL|IMAGE|VIDEO` (a video also takes `--motion-style`/`--sequence`/`--background-music-id`/`--voiceover`), the AI-image flags (`--generate-images` …), and all the scheduling options.
 
 ```bash
 # AI-generated
@@ -665,7 +667,7 @@ postnitro video import --file ./scenes.json --motion-style bold --wait # Import 
 postnitro motion styles                                               # Style ids for --motion-style (also: motion sequences)
 postnitro post get <embedPostId>                                       # Read an API-made post
 postnitro post edit <embedPostId> --file ./post.json --wait          # Replace its slides, in place
-postnitro audio list                                                  # Audio ids for --audio-id
+postnitro audio list                                                  # Audio ids for --background-music-id
 postnitro audio delete <audioId> --yes                                # Delete a track
 postnitro carousel status <embedPostId>                               # Check progress (also: image/video status)
 postnitro carousel output <embedPostId>                               # Get output + designId (also: image/video output)

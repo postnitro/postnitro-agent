@@ -18,7 +18,11 @@ Videos come animated and as long as their motion takes; posts made through the A
 - **A failed post's kept design**: when `--wait` ends in a failure that left a design behind, such as a video too long for an MP4, the error carries its `designId`, `editorUrl` and `duration`, and the `embedPostId`.
 - **`POSTNITRO_API_URL`** points the CLI at another Embed API, such as staging.
 
+- **`--background-music-id <id>`** and **`--background-music-volume <0-100>`** on the video and one-shot commands and `post edit`. The music is lowered to 30% under a voiceover.
+- **An AI voiceover**: `--voiceover`, with `--voice <name>` and `--voice-tone <tone>` (each implying it) and `--no-captions`. The AI writes a line for every scene and records it, from the plan's AI tokens, not API credits; best-effort, so the video is made without it when the tokens are used up. `post edit --no-voiceover` takes it off.
+
 ### Changed
+- **`--audio-id` is the older name of `--background-music-id`** and still works; the CLI sends it as `backgroundMusicId`. A reel's `--post-settings` takes `backgroundMusicId` (or `audioId`).
 - **Videos are animated by default** (the template's own motion, else `clean`) and **run as long as their motion takes**, up to 2:00. `--response-type MP4` no longer needs a length, and `--audio-id` no longer needs one either.
 - **`--video-duration` is hidden and ignored.** Scripts that still pass it keep working.
 - **`--post-settings`** for a reel is its audio, `{"audioId":"..."}`: a reel runs as long as its design. A `videoDuration` in it is ignored by the API.

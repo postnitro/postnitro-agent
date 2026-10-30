@@ -61,7 +61,7 @@ export function addScheduleJsonOptions(cmd: Command): Command {
     )
     .option(
       "--post-settings <json>",
-      "A reel's audio as a JSON object, e.g. '{\"audioId\":\"media_123\"}'. Optional: without it a reel takes its design's audio. A reel runs as long as its design, so there is no length to set"
+      "A reel's music as a JSON object, e.g. '{\"backgroundMusicId\":\"media_123\"}' (audioId, its older name, still works). Optional: without it a reel takes its design's music. A reel runs as long as its design, so there is no length to set"
     );
 }
 

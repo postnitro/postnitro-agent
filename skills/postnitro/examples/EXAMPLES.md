@@ -38,7 +38,7 @@ postnitro video import --file examples/import-video.json \
 # In a bolder style, with an audio track (IDs come from `postnitro audio list`, never a URL)
 AUDIO=$(postnitro audio list | jq -r '.audios[0].id')
 postnitro video import --file examples/import-video.json \
-  --response-type MP4 --motion-style bold --audio-id "$AUDIO" --wait
+  --response-type MP4 --motion-style bold --background-music-id "$AUDIO" --wait
 
 # A saved style and sequence (ids from `postnitro motion styles` / `postnitro motion sequences`)
 postnitro video import --file examples/import-video.json \
@@ -154,12 +154,12 @@ published). `title` (max 100 characters) and `link` are optional.
 ## Audio tracks
 
 ```bash
-postnitro audio list                    # ids for --audio-id / postSettings.audioId
+postnitro audio list                    # ids for --background-music-id / postSettings.backgroundMusicId
 postnitro audio delete <audioId> --yes  # destructive; refused while a scheduled post uses it
 ```
 
 Uploading audio happens in the PostNitro app — the CLI lists and deletes only. An empty
-`audios` array means there's nothing uploaded yet; create the video without `--audio-id`.
+`audios` array means there's nothing uploaded yet; create the video without `--background-music-id`.
 
 ## What's scheduled on one account
 

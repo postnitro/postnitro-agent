@@ -88,11 +88,11 @@ Video posts. Slides are **scenes**, so `import` takes the same slide **array** a
 postnitro video import-template                    # prints the slide rules + motion settings
 postnitro video generate --context <text> [--type text|article|x] [--instructions <text>]
                          [--template-id] [--brand-id] [--preset-id] [--response-type MP4|DESIGN]
-                         [--motion-style <name|id>] [--sequence <id>] [--audio-id <id>]
+                         [--motion-style <name|id>] [--sequence <id>] [--background-music-id <id>] [--background-music-volume <0-100>] [--voiceover] [--voice <name>] [--voice-tone <tone>] [--no-captions]
                          [--requestor-id <id>] [--wait]
 postnitro video import (--slides <json> | --file <path>)
                        [--template-id] [--brand-id] [--response-type MP4|DESIGN]
-                       [--motion-style <name|id>] [--sequence <id>] [--audio-id <id>] [--requestor-id] [--wait]
+                       [--motion-style <name|id>] [--sequence <id>] [--background-music-id <id>] [--background-music-volume <0-100>] [--voiceover] [--voice <name>] [--voice-tone <tone>] [--no-captions] [--requestor-id] [--wait]
 postnitro video status <embedPostId>               # progress + step logs
 postnitro video output <embedPostId>               # MP4 URL + designId + editorUrl + duration
 ```
@@ -100,7 +100,9 @@ postnitro video output <embedPostId>               # MP4 URL + designId + editor
 - `--motion-style <name|id>`: how every scene moves — a built-in style's name (`clean`, `bold`, …; `none` keeps it still) or a saved style's id, from `postnitro motion styles`. Without it, the template's own motion, else `clean`.
 - `--sequence <id>`: a saved sequence's id, from `postnitro motion sequences` — its animations on every scene, over the style.
 - **No length to set:** a video runs as long as its motion takes; `output` and `--wait` give it as `duration` (seconds). Up to 2:00 renders as `MP4`. A longer one fails as `MP4`, but its design is kept: the error carries `designId`, `editorUrl` and `duration`, to shorten it in the editor. `--video-duration` from older versions is accepted and ignored.
-- `--audio-id <id>`: an audio **ID** from `postnitro audio list` — never a URL. The API rejects a URL, an ID from another workspace, or an ID naming a non-audio file. Omit for a silent video.
+- `--background-music-id <id>` — the music: an audio **ID** from `postnitro audio list`, never a URL. Omit for no music. `--audio-id`, its older name, still works.
+- `--background-music-volume <0-100>` — the music's volume (default 100). It's lowered to 30% while the voiceover speaks.
+- `--voiceover` — an **AI voiceover**: the AI writes a spoken line for every scene and records it, with its words as captions. `--voice <name>` (`alloy`, `ash`, `ballad`, `coral` (default), `echo`, `fable`, `nova`, `onyx`, `sage`, `shimmer`, `verse`) and `--voice-tone <tone>` (`upbeat` (default), `calm`, `professional`, `storyteller`, or your own words, up to 80 characters) imply it; `--no-captions` hides the captions. No script is taken. Each scene lasts as long as its line. It costs the plan's **AI tokens** (the script's, and 5,000 a minute of audio), not API credits, and is best-effort: with the tokens used up the video is made without it, and the status's `VOICEOVER` step says why. On `post edit`, a narrated video is narrated again in its voice and tone; `--no-voiceover` takes it off.
 - Slides follow the carousel rules exactly (1 `starting_slide` first, ≥1 `body_slide`, 1 `ending_slide` last); infographic layouts work on scenes too.
 - Rendering a video is slower than a carousel — typically 15-45s for `--wait` with `MP4`, and longer for designs with GIFs.
 - The length and audio carry over automatically when the video is scheduled as a reel, so `--post-settings` is usually unnecessary.
@@ -125,7 +127,7 @@ Read and edit a post made through the API (generate or import), by its **`embedP
 postnitro post get <embedPostId>                    # { embedPostId, designId, postType, name, size, brand, slides, videoSettings?, editorUrl }
 postnitro post edit <embedPostId> (--file <path> | --slides <json>)
                       [--response-type DESIGN|PDF|PNG|MP4] [--requestor-id <id>]
-                      [--motion-style <name|id>] [--sequence <id>] [--audio-id <id>]   # a video only
+                      [--motion-style <name|id>] [--sequence <id>] [--background-music-id <id>] [--background-music-volume <0-100>] [--voiceover] [--voice <name>] [--voice-tone <tone>] [--no-captions]   # a video only
                       [--generate-images --image-context <text> ...] [--wait]
 postnitro post status <embedPostId>              # the edit's progress
 postnitro post output <embedPostId>              # the edit's output
@@ -138,15 +140,15 @@ postnitro post output <embedPostId>              # the edit's output
 
 ## audio
 
-Audio tracks used by video posts (`--audio-id`) and scheduled reels (`postSettings.audioId`). **Upload happens in the PostNitro app** — the CLI lists and deletes only.
+Audio tracks used by video posts (`--background-music-id`) and scheduled reels (`postSettings.backgroundMusicId`). **Upload happens in the PostNitro app** — the CLI lists and deletes only.
 
 ```
 postnitro audio list [--page <n>] [--limit <n>]   # { count, audios: [{ id, name, url, duration, artistName, source, createdAt }] }
 postnitro audio delete <id> --yes                 # destructive
 ```
-- `id` is the value to pass as `--audio-id` / `postSettings.audioId`. `url` is for previewing; the API always wants the ID.
+- `id` is the value to pass as `--background-music-id` / `postSettings.backgroundMusicId`. `url` is for previewing; the API always wants the ID.
 - `duration` is the **track's** length in seconds — a longer track is simply cut off at the video's length.
-- An empty list means the workspace has no audio yet; the result includes a `note` saying so. Create the video without `--audio-id`, or upload a track in the app first.
+- An empty list means the workspace has no audio yet; the result includes a `note` saying so. Create the video without `--background-music-id`, or upload a track in the app first.
 - **Destructive:** `audio delete` permanently removes the record and the stored file. It is refused (400) while a scheduled post still references the track — remove it from those posts first. Videos already rendered to MP4 keep their audio, since the track is baked into the file. Requires `--yes`.
 
 ## AI image generation (`generateImages`)
@@ -196,32 +198,32 @@ postnitro schedule delete <id> --yes
 - `--scheduled-at` must be a **future** ISO-8601 datetime (trailing `Z`).
 - Inline JSON flags override the same field in `--file`.
 - `--accounts <id,id>` (list only) filters by social account — comma-separated IDs from `postnitro social list`. It filters **posts**, not the accounts within them: a post targeting two platforms is returned when you filter by either, and it still reports every account it targets. Unknown IDs match nothing rather than erroring.
-- `--post-settings` carries a reel's audio (`{"audioId":"..."}`) and is **optional**: when omitted, the reel takes the audio the attached design was made with, if any. `audioId` must be an audio ID in your workspace. A reel runs as long as its design, so there's no length to set; a `videoDuration` sent is ignored.
+- `--post-settings` carries a reel's audio (`{"backgroundMusicId":"..."}`) and is **optional**: when omitted, the reel takes the audio the attached design was made with, if any. `audioId` must be an audio ID in your workspace. A reel runs as long as its design, so there's no length to set; a `videoDuration` sent is ignored.
 
 ## generate-and-schedule
 
 ```
 postnitro generate-and-schedule --context <text> --status DRAFT|SCHEDULED --scheduled-at <iso>
-                                [--post-type CAROUSEL|IMAGE|VIDEO] [--motion-style <name|id>] [--sequence <id>] [--audio-id <id>]
+                                [--post-type CAROUSEL|IMAGE|VIDEO] [--motion-style <name|id>] [--sequence <id>] [--background-music-id <id>] [--background-music-volume <0-100>] [--voiceover] [--voice <name>] [--voice-tone <tone>] [--no-captions]
                                 [ ...all generate flags... ]
                                 [--generate-images --image-context <text> ...]   # optional AI images
                                 [--design-id] [--file <json>]
                                 [--post-content] [--selected-accounts] [--*-post-settings] [--post-settings]
 ```
-Generates → waits → schedules in one call. `--post-type` defaults to `CAROUSEL` (use `IMAGE` for a single-image post, or `VIDEO` for a video — `VIDEO` also takes `--motion-style`/`--sequence`/`--audio-id`, and only `MP4`/`DESIGN` response types). Also accepts the [AI image generation](#ai-image-generation-generateimages) flags. On scheduling failure the error includes the `designId` so you can retry `schedule create` without regenerating.
+Generates → waits → schedules in one call. `--post-type` defaults to `CAROUSEL` (use `IMAGE` for a single-image post, or `VIDEO` for a video — `VIDEO` also takes `--motion-style`/`--sequence`/`--background-music-id`/`--voiceover`, and only `MP4`/`DESIGN` response types). Also accepts the [AI image generation](#ai-image-generation-generateimages) flags. On scheduling failure the error includes the `designId` so you can retry `schedule create` without regenerating.
 
 ## import-and-schedule
 
 ```
 postnitro import-and-schedule --status DRAFT|SCHEDULED --scheduled-at <iso>
-                              [--post-type CAROUSEL|IMAGE|VIDEO] [--motion-style <name|id>] [--sequence <id>] [--audio-id <id>]
+                              [--post-type CAROUSEL|IMAGE|VIDEO] [--motion-style <name|id>] [--sequence <id>] [--background-music-id <id>] [--background-music-volume <0-100>] [--voiceover] [--voice <name>] [--voice-tone <tone>] [--no-captions]
                               (--slides <json> | --slide <json> | --slides-file <path>)
                               [--template-id] [--brand-id] [--response-type] [--requestor-id]
                               [--generate-images --image-context <text> ...]   # optional AI images
                               [--design-id] [--file <json>]
                               [--post-content] [--selected-accounts] [--*-post-settings] [--post-settings]
 ```
-Imports your own content → waits → schedules in one call (the import-side counterpart of `generate-and-schedule`). `--post-type` defaults to `CAROUSEL` — pass `--slides` (array) for CAROUSEL or VIDEO, or `--slide` (single object) for IMAGE; `--slides-file` reads either from a file. A VIDEO also takes `--motion-style`/`--sequence`/`--audio-id`.
+Imports your own content → waits → schedules in one call (the import-side counterpart of `generate-and-schedule`). `--post-type` defaults to `CAROUSEL` — pass `--slides` (array) for CAROUSEL or VIDEO, or `--slide` (single object) for IMAGE; `--slides-file` reads either from a file. A VIDEO also takes `--motion-style`/`--sequence`/`--background-music-id`/`--voiceover`.
 
 > **Flag note:** here `--file` is the **schedule body** (postContent/accounts/settings), matching `generate-and-schedule` — so slide content comes from `--slides` / `--slide` / `--slides-file`, not `--file`.
 
@@ -244,7 +246,7 @@ Keys: `common`, `linkedin`, `instagram`, `tiktok`, `facebook`, `threads`, `pinte
 | `--threads-post-settings` | `{"postType":"carousel\|image\|reel"}` |
 | `--facebook-post-settings` | `{"postType":"carousel\|link_carousel\|image\|reel"}`; `link_carousel` also takes `linkUrl` (required when scheduled), `callToAction`, `showEndCard`, `useSlideTitles`, `useSlideDescriptions`. Accounts are Pages; design required when scheduled |
 | `--pinterest-post-settings` | `{"postType":"carousel\|image\|reel","title":"...","link":"https://..."}` — `carousel` = carousel Pin (2–5 slides), `image` = image Pin, `reel` = video Pin; `title` optional (≤100 chars), `link` optional http(s) URL. Accounts are boards (one account per board, no board field); required when a board is selected and a design is set; design required when scheduled; any size except ultra-wide (>21:9), 2:3 recommended |
-| `--post-settings` (reel) | `{"audioId":"..."}` — optional; the reel runs as long as its design |
+| `--post-settings` (reel) | `{"backgroundMusicId":"..."}` — optional; the reel runs as long as its design |
 
 ## Slide schema (import)
 

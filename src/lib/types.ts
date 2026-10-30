@@ -46,8 +46,14 @@ export interface VideoSettings {
   motionStyle?: string;
   /** A saved sequence's id: its animations on every slide, over the style. From `postnitro motion sequences`. */
   sequenceId?: string;
-  /** Media id of an audio track — an id, not a URL. From `postnitro audio list`. */
+  /** The background music: a media id from `postnitro audio list` — an id, not a URL. */
+  backgroundMusicId?: string;
+  /** The music's volume, 0 to 100; lowered to 30% under narration. */
+  backgroundMusicVolume?: number;
+  /** The older name of `backgroundMusicId`, still taken by the API. */
   audioId?: string;
+  /** An AI voiceover, written and recorded for every scene; `false`, on an edit, takes it off. */
+  voiceover?: { voice?: string; tone?: string; captions?: boolean } | false;
 }
 
 export type ImagePlacement = "auto" | "background" | "in-line";
@@ -249,7 +255,12 @@ export interface DesignContent {
   /** An array of typed slides for CAROUSEL and VIDEO; one object, with no `type`, for IMAGE. */
   slides: Slide[] | ImageSlide;
   /** VIDEO only, when it has them. */
-  videoSettings?: { motionStyle?: string; audioId?: string };
+  videoSettings?: {
+    motionStyle?: string;
+    backgroundMusicId?: string;
+    backgroundMusicVolume?: number;
+    voiceover?: { voice: string; tone: string; captions: boolean };
+  };
   editorUrl: string | null;
 }
 
@@ -441,11 +452,13 @@ export interface PinterestPostSettings {
 }
 
 /**
- * A scheduled reel's audio. Optional: when omitted, the API takes the audio the
+ * A scheduled reel's music. Optional: when omitted, the API takes the music the
  * attached design was made with, if any. A reel runs as long as its design, so
  * there's no length to set; a `videoDuration` sent is ignored.
  */
 export interface ReelPostSettings {
+  backgroundMusicId?: string | null;
+  /** The older name of `backgroundMusicId`, still taken. */
   audioId?: string | null;
 }
 
