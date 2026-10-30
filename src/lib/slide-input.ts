@@ -92,10 +92,10 @@ export async function resolveImageSlide(
 }
 
 /**
- * Resolves an edit's new slides, whose shape is the design's post type: an array
- * for a CAROUSEL or VIDEO, one object for an IMAGE. Either may come bare or under
- * `slides`, so `design get`'s output, changed, can be passed back as it is (only
- * its `slides` are read). The API checks them against the design's own type.
+ * Resolves an edit's new slides, whose shape is the post's type: an array for a
+ * CAROUSEL or VIDEO, one object for an IMAGE. Either may come bare or under
+ * `slides`, so `post get`'s output, changed, can be passed back as it is (only
+ * its `slides` are read). The API checks them against the post's own type.
  */
 export async function resolveEditSlides(
   inline: string | undefined,

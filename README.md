@@ -221,28 +221,28 @@ Each entry is `{ id, name, builtIn, summary }`, plus `createdAt`/`updatedAt` for
 
 ### Reading & Editing a Post
 
-A post made through the API (generate or import) can be read back and edited **in place**, by its `designId` (not its `embedPostId`):
+A post made through the API (generate or import) can be read back and edited **in place**, by its `embedPostId`, the one generate, import or an edit returned (they all name the same design):
 
 ```bash
 # Read it, in the shape import takes, with its brand (free)
-postnitro design get <designId> > design.json
+postnitro post get <embedPostId> > post.json
 
-# Change design.json's slides, then send them back: every slide is replaced
-postnitro design edit <designId> --file design.json --response-type PDF --wait
+# Change post.json's slides, then send them back: every slide is replaced
+postnitro post edit <embedPostId> --file post.json --response-type PDF --wait
 
 # Or give the slides inline: an array (carousel, video) or one object (image)
-postnitro design edit <designId> --slides '{"heading":"New headline"}'
+postnitro post edit <embedPostId> --slides '{"heading":"New headline"}'
 
 # Status / output of the edit
-postnitro design status <embedPostId>
-postnitro design output <embedPostId>
+postnitro post status <embedPostId>
+postnitro post output <embedPostId>
 ```
 
-- An edit **replaces every slide**, so send back the ones to keep too. `--file` takes the slides, or `design get`'s output, whose `slides` it reads.
+- An edit **replaces every slide**, so send back the ones to keep too. `--file` takes the slides, or `post get`'s output, whose `slides` it reads.
 - The design keeps its `designId`, name, look, size and brand, and a video its style and audio unless `--motion-style`, `--sequence` or `--audio-id` give new ones. Anything scheduled with it shows the edit.
 - `--response-type` is `DESIGN` (the default), `PDF` or `PNG`, or `MP4`/`DESIGN` for a video. Saved defaults don't apply to an edit.
 - It also takes `--requestor-id`, the AI-image flags and `--wait`. It costs **1 credit per slide** sent.
-- Only designs made through the API can be read or edited, not ones made in the editor. A slide whose title was turned off in the editor comes back without a `heading`; give it one, since import needs it.
+- A post still being made has no design to read or edit yet: wait until it's `COMPLETED`. A slide whose title was turned off in the editor comes back without a `heading`; give it one, since import needs it.
 
 ---
 
@@ -663,8 +663,8 @@ postnitro image import --slide '{"heading":"..."}' --wait             # Import s
 postnitro video generate --context "topic" --response-type MP4 --wait # AI generate video (animated)
 postnitro video import --file ./scenes.json --motion-style bold --wait # Import video (slides = scenes)
 postnitro motion styles                                               # Style ids for --motion-style (also: motion sequences)
-postnitro design get <designId>                                       # Read an API-made post
-postnitro design edit <designId> --file ./design.json --wait          # Replace its slides, in place
+postnitro post get <embedPostId>                                       # Read an API-made post
+postnitro post edit <embedPostId> --file ./post.json --wait          # Replace its slides, in place
 postnitro audio list                                                  # Audio ids for --audio-id
 postnitro audio delete <audioId> --yes                                # Delete a track
 postnitro carousel status <embedPostId>                               # Check progress (also: image/video status)

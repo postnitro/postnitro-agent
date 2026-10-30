@@ -89,11 +89,11 @@ export class PostNitroClient {
   }
 
   // ============================================================
-  // Reading and editing a design made through the API
+  // Reading and editing a post made through the API, by its embedPostId
   // ============================================================
 
-  getDesign(designId: string): Promise<PostNitroApiResponse<{ design: DesignContent }>> {
-    return this.request(`/post/${encodeURIComponent(designId)}`, { method: "GET" });
+  getPost(embedPostId: string): Promise<PostNitroApiResponse<{ design: DesignContent }>> {
+    return this.request(`/post/${encodeURIComponent(embedPostId)}`, { method: "GET" });
   }
 
   initiateEdit(request: EditPostRequest): Promise<PostNitroApiResponse<InitiateResponseData & { designId: string }>> {

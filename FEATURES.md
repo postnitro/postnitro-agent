@@ -24,8 +24,8 @@ What the PostNitro CLI can do.
 - **`motion styles`** lists the built-in styles and the workspace's saved ones; **`motion sequences`** the saved sequences — the ids `--motion-style` and `--sequence` take.
 
 ## Reading & editing posts
-- **`design get <designId>`** reads a post made through the API in the shape import takes, with its brand.
-- **`design edit <designId>`** replaces all its slides in place (`--file`, which takes `design get`'s output, or `--slides`), keeping its `designId`, so a scheduled post shows the edit. 1 credit per slide.
+- **`post get <embedPostId>`** reads a post made through the API in the shape import takes, with its brand.
+- **`post edit <embedPostId>`** replaces all its slides in place (`--file`, which takes `post get`'s output, or `--slides`), keeping its `designId`, so a scheduled post shows the edit. 1 credit per slide.
 
 ## Audio
 - **`audio list`** returns the workspace's audio tracks with the IDs used by `--audio-id` and a reel's `postSettings.audioId`.

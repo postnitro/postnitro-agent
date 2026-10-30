@@ -234,10 +234,13 @@ export interface MotionTemplateItem {
 }
 
 /**
- * A design made through the API, read back in the shape import takes
- * (`GET /post/{designId}`), with its brand's details.
+ * A post made through the API, its design read back in the shape import takes
+ * (`GET /post/{embedPostId}`), with its brand's details.
  */
 export interface DesignContent {
+  /** The post's id, as asked for. */
+  embedPostId: string;
+  /** The design's id, the one scheduling takes. */
   designId: string;
   postType: PostType;
   name: string;
@@ -251,12 +254,13 @@ export interface DesignContent {
 }
 
 /**
- * An edit (`POST /post/edit`): every slide of an API-made design replaced in
- * place, as import takes them for its post type. It keeps its designId, name,
+ * An edit (`POST /post/edit`): every slide of a post made through the API
+ * replaced in place, as import takes them for its post type, the post named by
+ * its embedPostId (its own or an edit's). Its design keeps its designId, name,
  * look, size and brand.
  */
 export interface EditPostRequest {
-  designId: string;
+  embedPostId: string;
   slides: Slide[] | ImageSlide;
   responseType?: ResponseType;
   requestorId?: string;

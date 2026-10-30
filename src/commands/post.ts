@@ -29,45 +29,45 @@ function editResponseType(requested: string | undefined): ResponseType | undefin
 
 /**
  * Reading and editing a post made through the API (generate or import), by its
- * design ID: read it back in the shape import takes, change it, and send every
- * slide back. The edit is in place, so the design keeps its ID and anything
- * scheduled with it shows the edit. Designs made in the editor can't be read or
- * edited here.
+ * embedPostId — the one generate, import or an edit returned, since they all
+ * point at the same design: read it back in the shape import takes, change it,
+ * and send every slide back. The edit is in place, so the design keeps its ID
+ * and anything scheduled with it shows the edit.
  */
-export function registerDesignCommands(program: Command): void {
-  const design = program
-    .command("design")
-    .description("Read and edit a post made through the API, by its design ID (not its embedPostId)");
+export function registerPostCommands(program: Command): void {
+  const post = program
+    .command("post")
+    .description("Read and edit a post made through the API, by its embedPostId");
 
-  design
-    .command("get <designId>")
-    .description("Read a design made through the API in the shape import takes (slides, or one slide object for an image), with its brand. Free")
+  post
+    .command("get <embedPostId>")
+    .description("Read a post made through the API: its design in the shape import takes (slides, or one slide object for an image), with its brand. Free")
     .action(
-      action(async (designId: string, _opts, cmd: Command) => {
+      action(async (embedPostId: string, _opts, cmd: Command) => {
         const { client } = await clientFor(cmd);
-        const response = await client.getDesign(designId);
+        const response = await client.getPost(embedPostId);
         printResult(response.data.design);
       })
     );
 
-  const edit = design
-    .command("edit <designId>")
+  const edit = post
+    .command("edit <embedPostId>")
     .description(
-      "Replace ALL the slides of a design made through the API, in place: it keeps its design ID, name, look, size and brand " +
-        "(a video its style and audio, unless given), so scheduled posts show the edit. Read it with `design get` first and send back every slide to keep. 1 credit per slide"
+      "Replace ALL the slides of a post made through the API, in place: its design keeps its ID, name, look, size and brand " +
+        "(a video its style and audio, unless given), so scheduled posts show the edit. Read it with `post get` first and send back every slide to keep. 1 credit per slide"
     )
-    .option("--file <path>", "JSON file with the new slides: an array (carousel, video), one object (image), or `design get`'s output, whose slides it takes")
+    .option("--file <path>", "JSON file with the new slides: an array (carousel, video), one object (image), or `post get`'s output, whose slides it takes")
     .option("--slides <json>", "The new slides as inline JSON, in the same shapes. Overrides --file")
     .option("--response-type <type>", "Output format: DESIGN (default, skips rendering) | PDF | PNG, or for a video MP4 | DESIGN. Saved defaults don't apply")
     .option("--requestor-id <id>", "Optional custom tracking ID")
     .option("--wait", "Poll until the edit completes and print the final output", false);
   addVideoOptions(addImageGenerationOptions(edit)).action(
-    action(async (designId: string, opts, cmd: Command) => {
+    action(async (editedPostId: string, opts, cmd: Command) => {
       const { client } = await clientFor(cmd);
       const slides = await resolveEditSlides(opts.slides, opts.file, { inline: "--slides", file: "--file" });
 
       const initResponse = await client.initiateEdit({
-        designId,
+        embedPostId: editedPostId,
         slides,
         responseType: editResponseType(opts.responseType),
         requestorId: opts.requestorId,
@@ -82,7 +82,7 @@ export function registerDesignCommands(program: Command): void {
           embedPostId,
           designId: initResponse.data.designId,
           status: initResponse.data.status,
-          nextStep: `Use \`postnitro design status ${embedPostId}\` to monitor progress, then \`postnitro design output ${embedPostId}\`.`,
+          nextStep: `Use \`postnitro post status ${embedPostId}\` to monitor progress, then \`postnitro post output ${embedPostId}\`.`,
         });
         return;
       }
@@ -91,5 +91,5 @@ export function registerDesignCommands(program: Command): void {
     })
   );
 
-  registerPostInspectionCommands(design, "design", "design edit");
+  registerPostInspectionCommands(post, "post", "post's edit");
 }

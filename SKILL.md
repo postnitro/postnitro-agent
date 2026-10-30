@@ -222,18 +222,18 @@ postnitro import-and-schedule \
 
 ### 6. Edit a post you made
 
-A post made through the API (generate or import) can be read back and changed **in place**, by its `designId`:
+A post made through the API (generate or import) can be read back and changed **in place**, by its `embedPostId` (the one generate, import or an edit returned):
 
 ```bash
-postnitro design get <designId> > design.json      # its slides, in import's shape, with its brand (free)
-# ...change the slides in design.json...
-postnitro design edit <designId> --file design.json --wait
+postnitro post get <embedPostId> > post.json      # its slides, in import's shape, with its brand (free)
+# ...change the slides in post.json...
+postnitro post edit <embedPostId> --file post.json --wait
 ```
 
-- An edit **replaces every slide**: read first, and send back every slide to keep. `--file` takes `design get`'s output (it reads only `slides`), or the slides alone; `--slides` takes them inline — an array for a carousel or video, one object for an image.
+- An edit **replaces every slide**: read first, and send back every slide to keep. `--file` takes `post get`'s output (it reads only `slides`), or the slides alone; `--slides` takes them inline — an array for a carousel or video, one object for an image.
 - The design keeps its `designId`, name, look, size and brand (a video its style and audio, unless `--motion-style`/`--sequence`/`--audio-id` change them), so anything already scheduled with it shows the edit. No need to reschedule.
 - `--response-type` defaults to `DESIGN` (saved defaults don't apply); `PDF`/`PNG`, or `MP4` for a video, re-render it. It costs 1 credit per slide sent.
-- Only designs made through the API, not in the editor. A slide whose title is off comes back without a `heading`; add one before sending it back.
+- A post still being made has no design to read or edit yet: wait for `--wait` or `COMPLETED`. A slide whose title was turned off in the editor comes back without a `heading`; add one before sending it back.
 
 ## Common Patterns
 
@@ -323,7 +323,7 @@ done
 11. **`SCHEDULED` publishes live** — use `DRAFT` when unsure; confirm time/account with the user first.
 12. **`responseType`** — the CLI defaults to `PDF` (pass `--response-type PNG` for individual slide images, or `DESIGN` to skip rendering and only create the design). Note: the underlying API now defaults to `DESIGN` when omitted, but the CLI always sends `PDF` explicitly, so CLI behavior is unchanged.
 13. **Credits vary** — AI generation ≈ 2 credits/slide; content import ≈ 1 credit/slide; an edit 1 credit per slide sent. Warn before large batches.
-14. **An edit drops slides you didn't send** — `design edit` replaces them all. Start from `design get`.
+14. **An edit drops slides you didn't send** — `post edit` replaces them all. Start from `post get`.
 
 ## Credits & Pricing
 
@@ -372,8 +372,8 @@ postnitro video import --file ./scenes.json --response-type MP4 --wait
 postnitro motion styles | postnitro motion sequences   # ids for --motion-style / --sequence
 
 # Read & edit a post made through the API, in place (by designId)
-postnitro design get <designId>
-postnitro design edit <designId> (--file ./design.json | --slides '<json>') --wait
+postnitro post get <embedPostId>
+postnitro post edit <embedPostId> (--file ./post.json | --slides '<json>') --wait
 
 # Schedule (date REQUIRED + future; use designId, not embedPostId)
 postnitro schedule create --status SCHEDULED|DRAFT --scheduled-at "<iso>" --design-id <id> \

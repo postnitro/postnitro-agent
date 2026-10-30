@@ -75,12 +75,12 @@ An edit replaces every slide in place, so start from what's there. The design ke
 `designId`, so anything scheduled with it shows the edit.
 
 ```bash
-postnitro design get <designId> > design.json
-# change design.json's "slides" (keep every slide you want), then:
-postnitro design edit <designId> --file design.json --response-type PDF --wait
+postnitro post get <embedPostId> > post.json
+# change post.json's "slides" (keep every slide you want), then:
+postnitro post edit <embedPostId> --file post.json --response-type PDF --wait
 
 # An image post's one slide, inline
-postnitro design edit <designId> --slides '{"heading":"New headline","description":"Now with more"}'
+postnitro post edit <embedPostId> --slides '{"heading":"New headline","description":"Now with more"}'
 ```
 
 ## Schedule a finished design
