@@ -174,17 +174,17 @@ Unlike `carousel import` (an array of typed slides), `image import` takes **one 
 The `video` command group turns slides into a video — **each slide is a scene**, so `video import` takes the same slide array as `carousel import`:
 
 ```bash
-# See the slide rules + render settings
+# See the slide rules + motion settings
 postnitro video import-template
 
-# Generate with AI, rendered to MP4
+# Generate with AI, animated and rendered to MP4
 postnitro video generate --context "3 habits that make remote teams faster" \
-  --response-type MP4 --video-duration 30 --wait
+  --response-type MP4 --wait
 
-# Import your own scenes, with an audio track
+# Import your own scenes, in a bolder style, with an audio track
 AUDIO=$(postnitro audio list | jq -r '.audios[0].id')
 postnitro video import --file ./scenes.json \
-  --response-type MP4 --video-duration 30 --audio-id "$AUDIO" --wait
+  --response-type MP4 --motion-style bold --background-music-id "$AUDIO" --wait
 
 # Design only — no render; finish it in the video maker
 postnitro video generate --context "..." --wait
@@ -196,10 +196,58 @@ postnitro video output <embedPostId>
 
 **Video-only options:**
 - `--response-type MP4|DESIGN` — a video accepts **nothing else** (`PDF`/`PNG` are rejected, and `MP4` is rejected for other post types). Defaults to `DESIGN`; a saved `PDF`/`PNG` default is treated as `DESIGN` and noted in `warnings`.
-- `--video-duration <seconds>` — the **whole video's** length, not per scene. At least 5, under 60. **Required** with `--response-type MP4`.
-- `--audio-id <id>` — an audio **ID** from `postnitro audio list`, never a URL. Omit for a silent video.
+- `--motion-style <name-or-id>` — how every scene moves: a built-in style's name (`clean`, `bold`, …; `none` keeps it still) or a saved style's id, from `postnitro motion styles`. Optional: a video is animated without it, by its template's own motion, else `clean`.
+- `--sequence <id>` — a saved sequence's id, from `postnitro motion sequences`: its animations on every scene, over the style.
+- `--background-music-id <id>` — the music: an audio **ID** from `postnitro audio list`, never a URL. Omit for no music. `--audio-id`, its older name, still works.
+- `--background-music-volume <0-100>` — the music's volume (default 100). It's lowered to 30% while the voiceover speaks.
+- `--voiceover` — an **AI voiceover**: the AI writes a spoken line for every scene and records it, with its words as captions. `--voice <name>` (`alloy`, `ash`, `ballad`, `coral` (default), `echo`, `fable`, `nova`, `onyx`, `sage`, `shimmer`, `verse`) and `--voice-tone <tone>` (`upbeat` (default), `calm`, `professional`, `storyteller`, or your own words, up to 80 characters) imply it; `--no-captions` hides the captions. No script is taken. Each scene lasts as long as its line. It costs the plan's **AI tokens** (the script's, and 5,000 a minute of audio), not API credits, and is best-effort: with the tokens used up the video is made without it, and the status's `VOICEOVER` step says why. On `post edit`, a narrated video is narrated again in its voice and tone; `--no-voiceover` takes it off.
 
-Rendering a video takes longer than a carousel — typically 15-45s with `--wait` and `MP4`, and longer for designs with animations or GIFs (which use the enhanced renderer). The duration and audio are reused automatically when the video is scheduled as a reel.
+**There is no length to set:** a video runs as long as its motion takes, and the output's `duration` gives it in seconds. Up to 2:00 renders as an MP4. A longer one still makes its design, but the MP4 fails, and the error names the design (`designId`, `editorUrl`, `duration`) to shorten in the editor. `--video-duration`, from older versions, is still accepted and ignored.
+
+Rendering a video takes longer than a carousel — typically 15-45s with `--wait` and `MP4`, and longer for designs with GIFs. The length and audio are reused automatically when the video is scheduled as a reel.
+
+---
+
+### Motion Styles & Sequences
+
+The styles and sequences `--motion-style` and `--sequence` take. They're saved in the PostNitro app's video editor (**Your styles**, **Your sequences**) or through the API; the CLI lists them:
+
+```bash
+postnitro motion styles      # built-in styles by name, and saved ones by id
+postnitro motion sequences   # saved sequences, by id
+```
+
+Each entry is `{ id, name, builtIn, summary }`, plus `createdAt`/`updatedAt` for a saved one.
+
+---
+
+### Reading & Editing a Post
+
+A post made through the API (generate or import) can be read back and edited **in place**, by its `embedPostId`, the one generate, import or an edit returned (they all name the same design):
+
+```bash
+# Read it, in the shape import takes, with its brand (free)
+postnitro post get <embedPostId> > post.json
+
+# Change post.json's slides, then send them back: every slide is replaced
+postnitro post edit <embedPostId> --file post.json --response-type PDF --wait
+
+# Or give the slides inline: an array (carousel, video) or one object (image)
+postnitro post edit <embedPostId> --slides '{"heading":"New headline"}'
+
+# Move it to another template or brand as well
+postnitro post edit <embedPostId> --file post.json --template-id <templateId> --brand-id <brandId>
+
+# Status / output of the edit
+postnitro post status <embedPostId>
+postnitro post output <embedPostId>
+```
+
+- An edit **replaces every slide**, so send back the ones to keep too. `--file` takes the slides, or `post get`'s output, whose `slides` it reads.
+- The design keeps its `designId` and name, and its template's look and size and its brand unless `--template-id` or `--brand-id` gives new ones: a new template takes the slides into its look and size, and a new brand replaces the branding. A video keeps its style and audio unless `--motion-style`, `--sequence`, `--background-music-id` or the voiceover flags give new ones. Anything scheduled with it shows the edit.
+- `--response-type` is `DESIGN` (the default), `PDF` or `PNG`, or `MP4`/`DESIGN` for a video. Saved defaults don't apply to an edit, its template and brand included.
+- It also takes `--requestor-id`, the AI-image flags and `--wait`. It costs **1 credit per slide** sent.
+- A post still being made has no design to read or edit yet: wait until it's `COMPLETED`. A slide whose title was turned off in the editor comes back without a `heading`; give it one, since import needs it.
 
 ---
 
@@ -208,11 +256,11 @@ Rendering a video takes longer than a carousel — typically 15-45s with `--wait
 Audio for video posts and reels. **Uploading happens in the PostNitro app** — the CLI lists and deletes only:
 
 ```bash
-postnitro audio list                     # ids to pass as --audio-id
+postnitro audio list                     # ids to pass as --background-music-id
 postnitro audio delete <audioId> --yes   # destructive
 ```
 
-`audio list` returns `{ id, name, url, duration, artistName, source, createdAt }` per track. Use `id` for `--audio-id` (and for a reel's `postSettings.audioId`); `url` is only for previewing. A track's `duration` is independent of `--video-duration` — a longer track is cut off at the video's length.
+`audio list` returns `{ id, name, url, duration, artistName, source, createdAt }` per track. Use `id` for `--background-music-id` (and for a reel's `postSettings.backgroundMusicId`); `url` is only for previewing. A track's `duration` is its own — a longer track is cut off at the video's length.
 
 `audio delete` removes the record **and** the stored file, and is refused while a scheduled post still references the track. Videos already rendered to MP4 keep their audio, since it's baked into the file.
 
@@ -251,12 +299,12 @@ postnitro schedule create \
 - `--post-content <json>` — captions object keyed by platform (`common`, `linkedin`, `instagram`, `tiktok`, `facebook`, `threads`, `pinterest`)
 - `--selected-accounts <json>` — array of social-account IDs
 - `--instagram-post-settings` / `--tiktok-post-settings` / `--linkedin-post-settings` / `--threads-post-settings` / `--facebook-post-settings` / `--pinterest-post-settings` — per-platform settings (JSON)
-- `--post-settings <json>` — reel settings (`videoDuration`, `audioId`)
+- `--post-settings <json>` — a reel's music (`backgroundMusicId`, or `audioId`, its older name)
 - `--file <path>` — a JSON file with any of the above (inline flags override it)
 
 A post must have **either** a `--design-id` **or** non-empty `--post-content`. Hashtags are auto-extracted from captions.
 
-`--post-settings` carries a reel's video settings (`{"videoDuration":30,"audioId":"..."}`) and is **optional** — when omitted, the API fills each field from the settings the attached design was generated with, falling back to 30 seconds with no audio.
+`--post-settings` carries a reel's audio (`{"backgroundMusicId":"..."}`) and is **optional** — when omitted, the reel takes the audio the attached design was made with, if any. A reel runs as long as its design, so there's no length to set (a `videoDuration` sent is ignored).
 
 `schedule list` takes an optional `--accounts <id,id>` filter. It filters **posts**, not the accounts inside them: a post targeting LinkedIn and Instagram is returned when you filter by either, and it still reports both. Unknown IDs match nothing rather than erroring.
 
@@ -273,7 +321,7 @@ postnitro schedule delete <id> --yes
 
 ### One-shot: Create + Schedule
 
-Two commands create and schedule in a single call: `generate-and-schedule` (AI-generated) and `import-and-schedule` (your own content). Both accept `--post-type CAROUSEL|IMAGE|VIDEO` (a video also takes `--video-duration`/`--audio-id`), the AI-image flags (`--generate-images` …), and all the scheduling options.
+Two commands create and schedule in a single call: `generate-and-schedule` (AI-generated) and `import-and-schedule` (your own content). Both accept `--post-type CAROUSEL|IMAGE|VIDEO` (a video also takes `--motion-style`/`--sequence`/`--background-music-id`/`--voiceover`), the AI-image flags (`--generate-images` …), and all the scheduling options.
 
 ```bash
 # AI-generated
@@ -496,14 +544,20 @@ The CLI interacts with these PostNitro Embed API endpoints:
 
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
-| `/post/initiate/generate` | POST | Start AI generation of a post (carousel or image) |
-| `/post/initiate/import` | POST | Start an import from your own content (carousel slides or a single image) |
+| `/post/initiate/generate` | POST | Start AI generation of a post (carousel, image or video) |
+| `/post/initiate/import` | POST | Start an import from your own content (carousel or video slides, or a single image) |
+| `/post/:designId` | GET | Read a design made through the API, in import's shape |
+| `/post/edit` | POST | Edit a design made through the API: its slides replaced, in place |
 | `/post/status/:id` | GET | Check generation status + step logs |
 | `/post/output/:id` | GET | Get final output + `designId` |
 | `/template` | GET | List templates |
 | `/brand` | GET / POST | List / create brands |
 | `/brand/:id` | GET / PUT | Get / update a brand |
 | `/ai-preset` | GET | List AI presets |
+| `/audio` | GET | List audio tracks |
+| `/audio/:id` | DELETE | Delete an audio track |
+| `/motion-style` | GET | List motion styles |
+| `/motion-sequence` | GET | List motion sequences |
 | `/social-account` | GET | List connected social accounts |
 | `/social-account/:id` | GET / DELETE | Get / disconnect a social account |
 | `/schedule` | GET / POST | List / create scheduled posts |
@@ -517,6 +571,7 @@ The CLI interacts with these PostNitro Embed API endpoints:
 |----------|----------|---------|-------------|
 | `POSTNITRO_API_KEY` | No* | - | Your PostNitro Embed API key |
 | `POSTNITRO_CONFIG_DIR` | No | `~/.postnitro-cli` | Where config/defaults are stored |
+| `POSTNITRO_API_URL` | No | `https://embed-api.postnitro.ai` | The Embed API to call, e.g. a staging one |
 
 *Either `--api-key`, `POSTNITRO_API_KEY`, or a saved key (`auth set-key`) is required.
 
@@ -610,9 +665,12 @@ postnitro carousel generate --context "topic" --type text --wait      # AI gener
 postnitro carousel import --file ./slides.json --wait                 # Import carousel (slides array)
 postnitro image generate --context "topic" --wait                     # AI generate single image
 postnitro image import --slide '{"heading":"..."}' --wait             # Import single image (one object)
-postnitro video generate --context "topic" --response-type MP4 --video-duration 30 --wait   # AI generate video
-postnitro video import --file ./scenes.json --response-type MP4 --video-duration 30 --wait  # Import video (slides = scenes)
-postnitro audio list                                                  # Audio ids for --audio-id
+postnitro video generate --context "topic" --response-type MP4 --wait # AI generate video (animated)
+postnitro video import --file ./scenes.json --motion-style bold --wait # Import video (slides = scenes)
+postnitro motion styles                                               # Style ids for --motion-style (also: motion sequences)
+postnitro post get <embedPostId>                                       # Read an API-made post
+postnitro post edit <embedPostId> --file ./post.json --wait          # Replace its slides, in place
+postnitro audio list                                                  # Audio ids for --background-music-id
 postnitro audio delete <audioId> --yes                                # Delete a track
 postnitro carousel status <embedPostId>                               # Check progress (also: image/video status)
 postnitro carousel output <embedPostId>                               # Get output + designId (also: image/video output)

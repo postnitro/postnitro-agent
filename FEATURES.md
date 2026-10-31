@@ -15,12 +15,21 @@ What the PostNitro CLI can do.
 
 ## Video posts
 - **`video generate` / `video import`** create a video whose slides are its scenes. Import takes the **same slide array** as a carousel.
-- **`--video-duration <seconds>`** sets the whole video's length (5 to under 60), required when rendering to MP4; **`--audio-id <id>`** lays an audio track over it.
+- **Animated by default**, and as long as its motion takes: no length to set. The output's `duration` gives it. Over 2:00 the MP4 fails, but the error names the kept design to shorten in the editor.
+- **`--motion-style <name|id>`** picks a built-in style (`clean`, `bold`, …; `none` keeps it still) or a saved one; **`--sequence <id>`** puts a saved sequence on every scene; **`--background-music-id <id>`** plays a track under it (`--audio-id` still works), at **`--background-music-volume <0-100>`**.
+- **An AI voiceover** (`--voiceover`, `--voice`, `--voice-tone`, `--no-captions`): the AI writes a line for every scene and records it, with captions, from the plan's AI tokens, not API credits.
 - **MP4 or DESIGN only** (`--response-type`) — `PDF`/`PNG` are rejected for a video, and `MP4` is rejected for other post types. Defaults to `DESIGN`.
-- **`video import-template`** prints the scene rules and render settings.
+- **`video import-template`** prints the scene rules and motion settings.
+
+## Motion
+- **`motion styles`** lists the built-in styles and the workspace's saved ones; **`motion sequences`** the saved sequences — the ids `--motion-style` and `--sequence` take.
+
+## Reading & editing posts
+- **`post get <embedPostId>`** reads a post made through the API in the shape import takes, with its brand.
+- **`post edit <embedPostId>`** replaces all its slides in place (`--file`, which takes `post get`'s output, or `--slides`), keeping its `designId`, so a scheduled post shows the edit. 1 credit per slide.
 
 ## Audio
-- **`audio list`** returns the workspace's audio tracks with the IDs used by `--audio-id` and a reel's `postSettings.audioId`.
+- **`audio list`** returns the workspace's audio tracks with the IDs used by `--background-music-id` and a reel's `postSettings.backgroundMusicId`.
 - **`audio delete <id> --yes`** removes a track and its stored file; refused while a scheduled post still uses it.
 - Uploading is done in the PostNitro app — the CLI lists and deletes only.
 

@@ -9,17 +9,15 @@ import {
   addVideoOptions,
   resolveVideoSettings,
   resolveVideoOutput,
-  assertVideoSettings,
   waitAndPrint,
-  VIDEO_MIN_DURATION_SECONDS,
-  VIDEO_MAX_DURATION_SECONDS,
 } from "../lib/generation.js";
 import { resolveCarouselSlides } from "../lib/slide-input.js";
 
 /**
  * VIDEO posts: slides are scenes, so they use the carousel slide array verbatim.
- * The only extra input is `videoSettings` (length + optional audio track), and the
- * output format is limited to MP4 (rendered video) or DESIGN (no render).
+ * A video is animated without being asked and runs as long as its motion takes;
+ * the optional extras are its motion style, a saved sequence and an audio track.
+ * The output format is limited to MP4 (rendered video) or DESIGN (no render).
  */
 export function registerVideoCommands(program: Command): void {
   const video = program.command("video").description("Generate, import, and inspect video posts");
@@ -33,14 +31,16 @@ export function registerVideoCommands(program: Command): void {
           rules: {
             "1_same_slides_as_carousel": "VIDEO takes the CAROUSEL slide array — exactly 1 starting_slide first, ≥1 body_slide, exactly 1 ending_slide last",
             "2_one_slide_per_scene": "Each slide becomes a scene in the video, in order",
-            "3_video_settings": `--video-duration is the whole video's length in seconds (${VIDEO_MIN_DURATION_SECONDS} to under ${VIDEO_MAX_DURATION_SECONDS}) — it is NOT per scene`,
-            "4_response_types": "Only MP4 (renders the video) and DESIGN (no render, editable in the video maker) are valid for a video",
-            "5_audio_is_an_id": "--audio-id takes a media ID from `postnitro audio list`, never a URL. Omit it for a silent video",
-            "6_dimensions_from_template": "The video's dimensions come from the template, as with any other post type",
-            "7_infographics_supported": "Infographic layouts work on video scenes exactly as they do on carousel slides",
+            "3_animated_by_default": "Every video is animated: by its template's own motion, else the clean style. --motion-style none keeps it still",
+            "4_length_is_automatic": "A video runs as long as its motion takes — there is no length to set. Up to 2:00 renders as MP4; a longer one fails as MP4 but its design is kept (designId, editorUrl) to shorten in the editor",
+            "5_response_types": "Only MP4 (renders the video) and DESIGN (no render, editable in the video maker) are valid for a video",
+            "6_audio_is_an_id": "--audio-id takes a media ID from `postnitro audio list`, never a URL. Omit it for a silent video",
+            "7_dimensions_from_template": "The video's dimensions come from the template, as with any other post type",
+            "8_infographics_supported": "Infographic layouts work on video scenes exactly as they do on carousel slides",
           },
           video_settings: {
-            "--video-duration": `(required for MP4) Seconds, ${VIDEO_MIN_DURATION_SECONDS} to under ${VIDEO_MAX_DURATION_SECONDS}`,
+            "--motion-style": "(optional) A built-in style's name (clean, bold, ...) or a saved style's id, from `postnitro motion styles`",
+            "--sequence": "(optional) A saved sequence's id, from `postnitro motion sequences`: its animations on every scene, over the style",
             "--audio-id": "(optional) Media ID of an audio track from `postnitro audio list`",
           },
           note: "Run `postnitro carousel import-template` for the full slide-field and infographic reference — the shape is identical.",
@@ -77,7 +77,6 @@ export function registerVideoCommands(program: Command): void {
 
       const videoSettings = resolveVideoSettings(opts);
       const { responseType, note } = await resolveVideoOutput(apiKey, opts.responseType);
-      assertVideoSettings(responseType, videoSettings);
 
       const usedDefaults = { ...defaults, responseType };
       const initResponse = await client.initiateGenerate({
@@ -131,7 +130,6 @@ export function registerVideoCommands(program: Command): void {
 
       const videoSettings = resolveVideoSettings(opts);
       const { responseType, note } = await resolveVideoOutput(apiKey, opts.responseType);
-      assertVideoSettings(responseType, videoSettings);
 
       const usedDefaults = { ...defaults, responseType };
       const initResponse = await client.initiateImport({

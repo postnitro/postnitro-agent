@@ -10,19 +10,25 @@ import type {
   BrandInput,
   PresetItem,
   AudioItem,
+  MotionTemplateItem,
+  DesignContent,
+  EditPostRequest,
   SocialAccountsData,
   SocialAccountDetailData,
   ScheduledPostRequest,
   ScheduledPost,
 } from "./types.js";
 
-const BASE_URL = "https://embed-api.postnitro.ai";
+// POSTNITRO_API_URL points the CLI at another Embed API, such as staging.
+const BASE_URL = (process.env.POSTNITRO_API_URL || "https://embed-api.postnitro.ai").replace(/\/+$/, "");
 
 export class PostNitroApiError extends Error {
   constructor(
     message: string,
     public statusCode: number,
-    public responseBody?: string
+    public responseBody?: string,
+    /** What the caller can still act on, e.g. the design a failed video kept. */
+    public details?: Record<string, unknown>
   ) {
     super(message);
     this.name = "PostNitroApiError";
@@ -83,6 +89,18 @@ export class PostNitroClient {
   }
 
   // ============================================================
+  // Reading and editing a post made through the API, by its embedPostId
+  // ============================================================
+
+  getPost(embedPostId: string): Promise<PostNitroApiResponse<{ design: DesignContent }>> {
+    return this.request(`/post/${encodeURIComponent(embedPostId)}`, { method: "GET" });
+  }
+
+  initiateEdit(request: EditPostRequest): Promise<PostNitroApiResponse<InitiateResponseData & { designId: string }>> {
+    return this.request("/post/edit", { method: "POST", body: request as unknown as Record<string, unknown> });
+  }
+
+  // ============================================================
   // Status & output
   // ============================================================
 
@@ -136,6 +154,18 @@ export class PostNitroClient {
 
   deleteAudio(audioId: string): Promise<PostNitroApiResponse<unknown>> {
     return this.request(`/audio/${audioId}`, { method: "DELETE" });
+  }
+
+  // ============================================================
+  // Motion styles and sequences (listed here; saved in the app or through the API)
+  // ============================================================
+
+  listMotionStyles(): Promise<PostNitroApiResponse<{ styles: MotionTemplateItem[] }>> {
+    return this.request("/motion-style", { method: "GET" });
+  }
+
+  listMotionSequences(): Promise<PostNitroApiResponse<{ sequences: MotionTemplateItem[] }>> {
+    return this.request("/motion-sequence", { method: "GET" });
   }
 
   // ============================================================
@@ -195,6 +225,33 @@ export class PostNitroClient {
   // Polling helper
   // ============================================================
 
+  /**
+   * The design a failed post kept, if it made one before failing: a video too long
+   * to render as an MP4 is still a design, to shorten in the editor. The output
+   * endpoint answers a failed post with a 400 that names it.
+   */
+  private async keptDesign(embedPostId: string): Promise<Record<string, unknown>> {
+    try {
+      await this.getPostOutput(embedPostId);
+    } catch (error) {
+      if (error instanceof PostNitroApiError && error.responseBody) {
+        try {
+          const data = JSON.parse(error.responseBody)?.data;
+          if (data?.designId) {
+            return {
+              designId: data.designId,
+              editorUrl: data.editorUrl ?? null,
+              ...(typeof data.duration === "number" ? { duration: data.duration } : {}),
+            };
+          }
+        } catch {
+          // Not JSON: nothing kept to report.
+        }
+      }
+    }
+    return {};
+  }
+
   async pollUntilComplete(
     embedPostId: string,
     options: { maxAttempts?: number; intervalMs?: number } = {}
@@ -210,7 +267,10 @@ export class PostNitroClient {
 
       if (status === "FAILED") {
         const lastLog = statusResponse.data.logs[statusResponse.data.logs.length - 1];
-        throw new PostNitroApiError(`Post generation failed: ${lastLog?.message ?? "Unknown error"}`, 500);
+        throw new PostNitroApiError(`Post generation failed: ${lastLog?.message ?? "Unknown error"}`, 500, undefined, {
+          embedPostId,
+          ...(await this.keptDesign(embedPostId)),
+        });
       }
 
       await new Promise((resolve) => setTimeout(resolve, intervalMs));

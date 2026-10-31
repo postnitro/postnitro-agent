@@ -143,17 +143,17 @@ The `pinterest` key of `--post-content` becomes the Pin description; only its fi
 
 ---
 
-## Reel timing — `--post-settings`
+## Reel audio — `--post-settings`
 
-Required for reel post types.
+Optional. A reel runs as long as its design, so there's no length to set (a `videoDuration` sent
+is ignored). Without it, a reel takes the audio its design was made with, if any.
 
 | Field | Type | Notes |
 |-------|------|-------|
-| `videoDuration` | `number` | Seconds |
-| `audioId` | `string` | Optional audio track ID |
+| `backgroundMusicId` | `string` | Optional audio track ID, from `postnitro audio list`. `audioId`, its older name, still works |
 
 ```json
-{ "videoDuration": 30, "audioId": "audio-123" }
+{ "backgroundMusicId": "audio-123" }
 ```
 
 ---

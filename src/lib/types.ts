@@ -37,17 +37,23 @@ export type VideoResponseType = "MP4" | "DESIGN";
 export type SavedResponseType = Exclude<ResponseType, "MP4">;
 
 /**
- * Render settings for a VIDEO post. Required when the response type is `MP4`
- * (a render needs a length), optional for `DESIGN`, rejected for other post types.
- *
- * Same shape as a scheduled reel's `postSettings` — the API reuses a video's own
- * settings when it's scheduled as a reel.
+ * A VIDEO post's motion and audio, all optional: a video is animated without
+ * them, and runs as long as its motion takes (no length is set). Rejected for
+ * other post types.
  */
 export interface VideoSettings {
-  /** Seconds. At least 5 and under 60. */
-  videoDuration: number;
-  /** Media id of an audio track — an id, not a URL. From `postnitro audio list`. */
+  /** A built-in style's name (`clean`, `bold`, ...) or a saved style's id. From `postnitro motion styles`. */
+  motionStyle?: string;
+  /** A saved sequence's id: its animations on every slide, over the style. From `postnitro motion sequences`. */
+  sequenceId?: string;
+  /** The background music: a media id from `postnitro audio list` — an id, not a URL. */
+  backgroundMusicId?: string;
+  /** The music's volume, 0 to 100; lowered to 30% under narration. */
+  backgroundMusicVolume?: number;
+  /** The older name of `backgroundMusicId`, still taken by the API. */
   audioId?: string;
+  /** An AI voiceover, written and recorded for every scene; `false`, on an edit, takes it off. */
+  voiceover?: { voice?: string; tone?: string; captions?: boolean } | false;
 }
 
 export type ImagePlacement = "auto" | "background" | "in-line";
@@ -214,7 +220,67 @@ export interface PostOutputData {
     mimeType?: string;
     /** A single URL for PDF and MP4 (one artifact each); one URL per slide for PNG. */
     data?: string | string[];
+    /** A video's length in seconds: as long as its motion takes. */
+    duration?: number;
   };
+}
+
+/**
+ * A motion style or sequence as the API lists it: a built-in style by its name,
+ * a saved one by its id.
+ */
+export interface MotionTemplateItem {
+  id: string;
+  name: string;
+  builtIn: boolean;
+  /** One line on how it moves. */
+  summary: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/**
+ * A post made through the API, its design read back in the shape import takes
+ * (`GET /post/{embedPostId}`), with its brand's details.
+ */
+export interface DesignContent {
+  /** The post's id, as asked for. */
+  embedPostId: string;
+  /** The design's id, the one scheduling takes. */
+  designId: string;
+  postType: PostType;
+  name: string;
+  size: unknown;
+  brand: Record<string, unknown> | null;
+  /** An array of typed slides for CAROUSEL and VIDEO; one object, with no `type`, for IMAGE. */
+  slides: Slide[] | ImageSlide;
+  /** VIDEO only, when it has them. */
+  videoSettings?: {
+    motionStyle?: string;
+    backgroundMusicId?: string;
+    backgroundMusicVolume?: number;
+    voiceover?: { voice: string; tone: string; captions: boolean };
+  };
+  editorUrl: string | null;
+}
+
+/**
+ * An edit (`POST /post/edit`): every slide of a post made through the API
+ * replaced in place, as import takes them for its post type, the post named by
+ * its embedPostId (its own or an edit's). Its design keeps its designId, name,
+ * look, size and brand.
+ */
+export interface EditPostRequest {
+  embedPostId: string;
+  slides: Slide[] | ImageSlide;
+  /** A new template or brand for the design; omitted, it keeps its own. */
+  templateId?: string;
+  brandId?: string;
+  responseType?: ResponseType;
+  requestorId?: string;
+  generateImages?: GenerateImagesConfig;
+  /** VIDEO only: a new style, sequence or audio, field by field. */
+  videoSettings?: VideoSettings;
 }
 
 export interface TemplateItem {
@@ -389,13 +455,20 @@ export interface PinterestPostSettings {
 }
 
 /**
- * A scheduled reel's video render settings — the same shape as a VIDEO post's
- * {@link VideoSettings}. Optional: when omitted, the API fills each field from the
- * settings the attached design was generated with, then from 30 seconds / no audio.
+ * A scheduled reel's music. Optional: when omitted, the API takes the music the
+ * attached design was made with, if any. A reel runs as long as its design, so
+ * there's no length to set; a `videoDuration` sent is ignored.
  */
 export interface ReelPostSettings {
+  backgroundMusicId?: string | null;
+  /** The older name of `backgroundMusicId`, still taken. */
+  audioId?: string | null;
+}
+
+/** A scheduled post's reel settings as the API stored them: the design's own length, and the audio. */
+export interface StoredReelPostSettings {
   videoDuration: number;
-  audioId?: string;
+  audioId: string | null;
 }
 
 export interface ScheduledPostRequest {
@@ -421,7 +494,7 @@ export interface ScheduledPost {
   scheduledFor: string;
   publishedAt: string | null;
   errorMessage: string | null;
-  postSettings: ReelPostSettings | null;
+  postSettings: StoredReelPostSettings | null;
   instagramPostSettings: InstagramPostSettings | null;
   linkedinPostSettings: LinkedinPostSettings | null;
   tiktokPostSettings: TiktokPostSettings | null;

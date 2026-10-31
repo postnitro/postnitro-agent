@@ -69,9 +69,9 @@ postnitro carousel generate \
 # Single image instead — same flags, just the image subcommand
 postnitro image generate --context "Announce our new scheduling feature" --wait
 
-# Video — same flags, plus the render length when you want the MP4 back
+# Video — same flags; it comes animated, so ask for the MP4 when you want the file
 postnitro video generate --context "3 habits that make remote teams faster" \
-  --response-type MP4 --video-duration 30 --wait
+  --response-type MP4 --wait
 ```
 
 **`--type` values:**
@@ -96,12 +96,12 @@ postnitro carousel import --file ./slides.json --wait
 postnitro image import --slide '{"heading":"Welcome!","sub_heading":"Subtitle","cta_button":"Learn more"}' --wait
 
 # Video — same slide ARRAY as a carousel; each slide is a scene
-postnitro video import --file ./scenes.json --response-type MP4 --video-duration 30 --wait
+postnitro video import --file ./scenes.json --response-type MP4 --wait
 ```
 
 - **Carousel** (`--slides`, array): exactly 1 `starting_slide` (first), ≥1 `body_slide`, exactly 1 `ending_slide` (last); `heading` required on every slide. Run `postnitro carousel import-template` for the schema.
 - **Image** (`--slide`, one object): fields `heading` (required), `sub_heading`, `description`, `cta_button`, `image`, `background_image` (plus infographic — see step 2). Sending an array here is rejected. Run `postnitro image import-template` for the schema.
-- **Video** (`--slides`, array): the carousel rules exactly — each slide becomes a scene, in order. Run `postnitro video import-template` for the schema and the render settings.
+- **Video** (`--slides`, array): the carousel rules exactly — each slide becomes a scene, in order. Run `postnitro video import-template` for the schema and the motion settings.
 
 ### 2. Options for any create command
 
@@ -113,17 +113,24 @@ Default `PDF` (single file URL). `PNG` returns one URL per slide. `DESIGN` **ski
 
 `MP4` (single video URL) belongs to `video` only, and a video accepts **nothing but** `MP4` or `DESIGN` — never `PDF`/`PNG`. Video commands default to `DESIGN`, so pass `--response-type MP4` when you want the file. `MP4` also can't be stored via `defaults set`, since it would break carousel and image calls.
 
-#### Video length & audio — `video` only
+#### Video motion & audio — `video` only
 
 ```bash
+postnitro motion styles                    # built-in styles by name, saved ones by id
+postnitro motion sequences                 # saved sequences, by id
 postnitro audio list                       # find an audio track's ID
-postnitro video generate --context "..." --response-type MP4 --video-duration 30 --audio-id <audioId> --wait
+postnitro video generate --context "..." --response-type MP4 --motion-style bold --background-music-id <audioId> --voiceover --wait
 ```
 
-- `--video-duration <seconds>` — the **whole video's** length, not per scene. At least 5 and under 60. **Required** with `--response-type MP4`; optional for `DESIGN` (set it later in the editor).
-- `--audio-id <id>` — an audio **ID** from `postnitro audio list`, never a URL. Omit for a silent video. Uploading audio happens in the PostNitro app; the CLI can list (`audio list`) and delete (`audio delete <id> --yes`) but not upload.
-- Rendering a video takes longer than a carousel — typically 15-45s with `--wait` and `MP4`, longer for designs with animations or GIFs.
-- These same settings are reused automatically when the video is later scheduled as a reel.
+- **Every video is animated** without being asked: by its template's own motion, else the `clean` style. All three flags are optional.
+- `--motion-style <name-or-id>` — how every scene moves: a built-in style's name (`clean`, `bold`, …; `none` keeps it still) or a saved style's id.
+- `--sequence <id>` — a saved sequence's id: its animations on every scene, over the style.
+- `--background-music-id <id>` — the music: an audio **ID** from `postnitro audio list`, never a URL. Omit for no music. `--audio-id`, its older name, still works.
+- `--background-music-volume <0-100>` — the music's volume (default 100). It's lowered to 30% while the voiceover speaks.
+- `--voiceover` — an **AI voiceover**: the AI writes a spoken line for every scene and records it, with its words as captions. `--voice <name>` (`alloy`, `ash`, `ballad`, `coral` (default), `echo`, `fable`, `nova`, `onyx`, `sage`, `shimmer`, `verse`) and `--voice-tone <tone>` (`upbeat` (default), `calm`, `professional`, `storyteller`, or your own words, up to 80 characters) imply it; `--no-captions` hides the captions. No script is taken. Each scene lasts as long as its line. It costs the plan's **AI tokens** (the script's, and 5,000 a minute of audio), not API credits, and is best-effort: with the tokens used up the video is made without it, and the status's `VOICEOVER` step says why. On `post edit`, a narrated video is narrated again in its voice and tone; `--no-voiceover` takes it off.
+- **There is no length to set**: a video runs as long as its motion takes; the output's `duration` gives it in seconds. Up to 2:00 renders as an MP4. A longer one fails as an MP4 but keeps its design: the error gives its `designId` and `editorUrl`, to shorten it (fewer slides) in the editor. `--video-duration` from older versions is accepted and ignored.
+- Rendering a video takes longer than a carousel — typically 15-45s with `--wait` and `MP4`, longer for designs with GIFs.
+- The video's length and audio are reused automatically when it's later scheduled as a reel.
 
 #### AI image generation — `--generate-images` (any post type, any source)
 
@@ -195,7 +202,7 @@ postnitro schedule create \
 
 ### 5. One-shot: create + schedule
 
-Create and schedule in a single call — `generate-and-schedule` (AI writes it) or `import-and-schedule` (your own content). Both accept the schedule flags from step 4, `--post-type CAROUSEL|IMAGE|VIDEO` (with `--video-duration`/`--audio-id` for a video), and the AI-image options from step 2. If creation succeeds but scheduling fails, the error returns the `designId` so you can retry `schedule create` without re-creating (or re-spending credits).
+Create and schedule in a single call — `generate-and-schedule` (AI writes it) or `import-and-schedule` (your own content). Both accept the schedule flags from step 4, `--post-type CAROUSEL|IMAGE|VIDEO` (with `--motion-style`/`--sequence`/`--background-music-id`/`--voiceover` for a video), and the AI-image options from step 2. If creation succeeds but scheduling fails, the error returns the `designId` so you can retry `schedule create` without re-creating (or re-spending credits).
 
 ```bash
 # AI-generated
@@ -214,6 +221,21 @@ postnitro import-and-schedule \
   --selected-accounts '["<socialAccountId>"]' \
   --post-content '{"common":"..."}'
 ```
+
+### 6. Edit a post you made
+
+A post made through the API (generate or import) can be read back and changed **in place**, by its `embedPostId` (the one generate, import or an edit returned):
+
+```bash
+postnitro post get <embedPostId> > post.json      # its slides, in import's shape, with its brand (free)
+# ...change the slides in post.json...
+postnitro post edit <embedPostId> --file post.json --wait
+```
+
+- An edit **replaces every slide**: read first, and send back every slide to keep. `--file` takes `post get`'s output (it reads only `slides`), or the slides alone; `--slides` takes them inline — an array for a carousel or video, one object for an image.
+- The design keeps its `designId`, name, look, size and brand (a video its style and audio, unless `--motion-style`/`--sequence`/`--background-music-id`/`--voiceover` change them), so anything already scheduled with it shows the edit. No need to reschedule.
+- `--response-type` defaults to `DESIGN` (saved defaults don't apply); `PDF`/`PNG`, or `MP4` for a video, re-render it. It costs 1 credit per slide sent.
+- A post still being made has no design to read or edit yet: wait for `--wait` or `COMPLETED`. A slide whose title was turned off in the editor comes back without a `heading`; add one before sending it back.
 
 ## Common Patterns
 
@@ -244,10 +266,10 @@ Import slides with `layoutType: "infographic"` body slides — see
 ```bash
 AUDIO=$(postnitro audio list | jq -r '.audios[0].id')
 postnitro video generate --context "3 habits that make remote teams faster" --type text \
-  --response-type MP4 --video-duration 30 --audio-id "$AUDIO" --wait
+  --response-type MP4 --motion-style bold --background-music-id "$AUDIO" --wait
 ```
-A reel reuses the video's own duration and audio when scheduled, so `--post-settings` is
-optional — omit it and the API fills it in (falling back to 30s with no audio).
+A reel runs as long as its video and reuses its audio when scheduled, so `--post-settings` is
+optional — omit it, or pass `'{"backgroundMusicId":"..."}'` to change the audio.
 
 ### Pattern 6: Audit one account's schedule
 ```bash
@@ -302,7 +324,8 @@ done
 10. **Destructive commands** — `social disconnect` and `schedule delete` require `--yes`.
 11. **`SCHEDULED` publishes live** — use `DRAFT` when unsure; confirm time/account with the user first.
 12. **`responseType`** — the CLI defaults to `PDF` (pass `--response-type PNG` for individual slide images, or `DESIGN` to skip rendering and only create the design). Note: the underlying API now defaults to `DESIGN` when omitted, but the CLI always sends `PDF` explicitly, so CLI behavior is unchanged.
-13. **Credits vary** — AI generation ≈ 2 credits/slide; content import ≈ 1 credit/slide. Warn before large batches.
+13. **Credits vary** — AI generation ≈ 2 credits/slide; content import ≈ 1 credit/slide; an edit 1 credit per slide sent. Warn before large batches.
+14. **An edit drops slides you didn't send** — `post edit` replaces them all. Start from `post get`.
 
 ## Credits & Pricing
 
@@ -344,6 +367,15 @@ postnitro carousel output <embedPostId>        # file URLs + designId + editorUr
 # Single-image posts (mirror carousel; import takes ONE slide object, not an array)
 postnitro image generate --context "topic|url" --type text|article|x --wait
 postnitro image import (--slide '{"heading":"..."}' | --file ./slide.json) --wait
+
+# Videos (animated by default; MP4 or DESIGN only; no length to set)
+postnitro video generate --context "topic|url" --response-type MP4 [--motion-style <name|id>] [--sequence <id>] [--background-music-id <id>] [--background-music-volume <0-100>] [--voiceover] [--voice <name>] [--voice-tone <tone>] [--no-captions] --wait
+postnitro video import --file ./scenes.json --response-type MP4 --wait
+postnitro motion styles | postnitro motion sequences   # ids for --motion-style / --sequence
+
+# Read & edit a post made through the API, in place (by designId)
+postnitro post get <embedPostId>
+postnitro post edit <embedPostId> (--file ./post.json | --slides '<json>') --wait
 
 # Schedule (date REQUIRED + future; use designId, not embedPostId)
 postnitro schedule create --status SCHEDULED|DRAFT --scheduled-at "<iso>" --design-id <id> \
