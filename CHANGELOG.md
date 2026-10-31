@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-11-01
+
 Videos come animated and as long as their motion takes; posts made through the API can be read back and edited in place.
 
 ### Added
@@ -17,7 +19,6 @@ Videos come animated and as long as their motion takes; posts made through the A
 - **`duration`** (seconds) on a video's output.
 - **A failed post's kept design**: when `--wait` ends in a failure that left a design behind, such as a video too long for an MP4, the error carries its `designId`, `editorUrl` and `duration`, and the `embedPostId`.
 - **`POSTNITRO_API_URL`** points the CLI at another Embed API, such as staging.
-
 - **`--background-music-id <id>`** and **`--background-music-volume <0-100>`** on the video and one-shot commands and `post edit`. The music is lowered to 30% under a voiceover.
 - **An AI voiceover**: `--voiceover`, with `--voice <name>` and `--voice-tone <tone>` (each implying it) and `--no-captions`. The AI writes a line for every scene and records it, from the plan's AI tokens, not API credits; best-effort, so the video is made without it when the tokens are used up. `post edit --no-voiceover` takes it off.
 
