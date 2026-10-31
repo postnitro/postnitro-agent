@@ -13,7 +13,7 @@ Videos come animated and as long as their motion takes; posts made through the A
 - **`--motion-style <name|id>`** and **`--sequence <id>`** on `video generate`, `video import`, `generate-and-schedule`, `import-and-schedule` and `post edit`: a built-in style by name (`clean`, `bold`, …; `none` keeps a video still) or a saved style by id, and a saved sequence over it.
 - **`motion styles`** and **`motion sequences`** list the built-in and saved styles and the saved sequences, with the ids those flags take.
 - **`post get <embedPostId>`** reads a post made through the API in the shape import takes, with its brand.
-- **`post edit <embedPostId>`** replaces all its slides in place (`--file`, which takes `post get`'s output, or `--slides`), keeping its `designId`, so a scheduled post shows the edit. 1 credit per slide. With `post status` and `post output` for the edit.
+- **`post edit <embedPostId>`** replaces all its slides in place (`--file`, which takes `post get`'s output, or `--slides`), keeping its `designId`, so a scheduled post shows the edit. `--template-id` and `--brand-id` move it to another template or brand; saved defaults don't apply. 1 credit per slide. With `post status` and `post output` for the edit.
 - **`duration`** (seconds) on a video's output.
 - **A failed post's kept design**: when `--wait` ends in a failure that left a design behind, such as a video too long for an MP4, the error carries its `designId`, `editorUrl` and `duration`, and the `embedPostId`.
 - **`POSTNITRO_API_URL`** points the CLI at another Embed API, such as staging.

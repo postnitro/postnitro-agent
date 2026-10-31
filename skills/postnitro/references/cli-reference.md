@@ -124,8 +124,9 @@ postnitro motion sequences   # { count, sequences: [...] }, same fields
 Read and edit a post made through the API (generate or import), by its **`embedPostId`** — the one generate, import or an edit returned, since they all name the same design. Never a `designId`.
 
 ```
-postnitro post get <embedPostId>                    # { embedPostId, designId, postType, name, size, brand, slides, videoSettings?, editorUrl }
+postnitro post get <embedPostId>                    # { embedPostId, designId, templateId?, postType, name, size, brand, slides, videoSettings?, editorUrl }
 postnitro post edit <embedPostId> (--file <path> | --slides <json>)
+                      [--template-id <id>] [--brand-id <id>]
                       [--response-type DESIGN|PDF|PNG|MP4] [--requestor-id <id>]
                       [--motion-style <name|id>] [--sequence <id>] [--background-music-id <id>] [--background-music-volume <0-100>] [--voiceover] [--voice <name>] [--voice-tone <tone>] [--no-captions]   # a video only
                       [--generate-images --image-context <text> ...] [--wait]
@@ -133,9 +134,9 @@ postnitro post status <embedPostId>              # the edit's progress
 postnitro post output <embedPostId>              # the edit's output
 ```
 - `get` returns the slides in **import's shape**: an array of typed slides for a carousel or video, one object (no `type`) for an image. Free.
-- `edit` **replaces every slide**, in place: the design keeps its `designId`, name, look, size and brand, and a video its style and audio unless the flags change them. Anything scheduled with it shows the edit.
+- `edit` **replaces every slide**, in place: the design keeps its `designId` and name, and its template's look and size and its brand unless `--template-id` or `--brand-id` gives new ones; a video keeps its style and audio unless the flags change them. Anything scheduled with it shows the edit.
 - `--file` takes the slides (array or object, bare or under `slides`), so `get`'s output, changed, goes straight back; only its `slides` are read. `--slides` takes the same inline.
-- `--response-type` defaults to `DESIGN`; saved defaults don't apply. The API checks it against the design's type (`MP4`/`DESIGN` for a video).
+- `--response-type` defaults to `DESIGN`; saved defaults don't apply, the template and brand included. The API checks it against the design's type (`MP4`/`DESIGN` for a video).
 - Costs **1 credit per slide** sent. A post still being made has no design yet: it's refused (`422`) until it completes. A slide whose title is off comes back without a `heading`, which import requires: add one.
 
 ## audio

@@ -53,11 +53,13 @@ export function registerPostCommands(program: Command): void {
   const edit = post
     .command("edit <embedPostId>")
     .description(
-      "Replace ALL the slides of a post made through the API, in place: its design keeps its ID, name, look, size and brand " +
-        "(a video its style and audio, unless given), so scheduled posts show the edit. Read it with `post get` first and send back every slide to keep. 1 credit per slide"
+      "Replace ALL the slides of a post made through the API, in place: its design keeps its ID and name, and its template's look and size and its brand " +
+        "unless --template-id or --brand-id gives new ones (a video its style and audio, unless given), so scheduled posts show the edit. Read it with `post get` first and send back every slide to keep. 1 credit per slide"
     )
     .option("--file <path>", "JSON file with the new slides: an array (carousel, video), one object (image), or `post get`'s output, whose slides it takes")
     .option("--slides <json>", "The new slides as inline JSON, in the same shapes. Overrides --file")
+    .option("--template-id <id>", "A new template for the design: the slides take its look and size. Omit to keep the design's; saved defaults don't apply")
+    .option("--brand-id <id>", "A new brand for the design. Omit to keep the design's; saved defaults don't apply")
     .option("--response-type <type>", "Output format: DESIGN (default, skips rendering) | PDF | PNG, or for a video MP4 | DESIGN. Saved defaults don't apply")
     .option("--requestor-id <id>", "Optional custom tracking ID")
     .option("--wait", "Poll until the edit completes and print the final output", false);
@@ -69,6 +71,8 @@ export function registerPostCommands(program: Command): void {
       const initResponse = await client.initiateEdit({
         embedPostId: editedPostId,
         slides,
+        templateId: opts.templateId,
+        brandId: opts.brandId,
         responseType: editResponseType(opts.responseType),
         requestorId: opts.requestorId,
         generateImages: resolveGenerateImages(opts),

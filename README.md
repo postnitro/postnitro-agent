@@ -235,14 +235,17 @@ postnitro post edit <embedPostId> --file post.json --response-type PDF --wait
 # Or give the slides inline: an array (carousel, video) or one object (image)
 postnitro post edit <embedPostId> --slides '{"heading":"New headline"}'
 
+# Move it to another template or brand as well
+postnitro post edit <embedPostId> --file post.json --template-id <templateId> --brand-id <brandId>
+
 # Status / output of the edit
 postnitro post status <embedPostId>
 postnitro post output <embedPostId>
 ```
 
 - An edit **replaces every slide**, so send back the ones to keep too. `--file` takes the slides, or `post get`'s output, whose `slides` it reads.
-- The design keeps its `designId`, name, look, size and brand, and a video its style and audio unless `--motion-style`, `--sequence`, `--background-music-id` or the voiceover flags give new ones. Anything scheduled with it shows the edit.
-- `--response-type` is `DESIGN` (the default), `PDF` or `PNG`, or `MP4`/`DESIGN` for a video. Saved defaults don't apply to an edit.
+- The design keeps its `designId` and name, and its template's look and size and its brand unless `--template-id` or `--brand-id` gives new ones: a new template takes the slides into its look and size, and a new brand replaces the branding. A video keeps its style and audio unless `--motion-style`, `--sequence`, `--background-music-id` or the voiceover flags give new ones. Anything scheduled with it shows the edit.
+- `--response-type` is `DESIGN` (the default), `PDF` or `PNG`, or `MP4`/`DESIGN` for a video. Saved defaults don't apply to an edit, its template and brand included.
 - It also takes `--requestor-id`, the AI-image flags and `--wait`. It costs **1 credit per slide** sent.
 - A post still being made has no design to read or edit yet: wait until it's `COMPLETED`. A slide whose title was turned off in the editor comes back without a `heading`; give it one, since import needs it.
 

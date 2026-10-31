@@ -273,6 +273,9 @@ export interface DesignContent {
 export interface EditPostRequest {
   embedPostId: string;
   slides: Slide[] | ImageSlide;
+  /** A new template or brand for the design; omitted, it keeps its own. */
+  templateId?: string;
+  brandId?: string;
   responseType?: ResponseType;
   requestorId?: string;
   generateImages?: GenerateImagesConfig;

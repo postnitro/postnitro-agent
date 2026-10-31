@@ -233,8 +233,8 @@ postnitro post edit <embedPostId> --file post.json --wait
 ```
 
 - An edit **replaces every slide**: read first, and send back every slide to keep. `--file` takes `post get`'s output (it reads only `slides`), or the slides alone; `--slides` takes them inline — an array for a carousel or video, one object for an image.
-- The design keeps its `designId`, name, look, size and brand (a video its style and audio, unless `--motion-style`/`--sequence`/`--background-music-id`/`--voiceover` change them), so anything already scheduled with it shows the edit. No need to reschedule.
-- `--response-type` defaults to `DESIGN` (saved defaults don't apply); `PDF`/`PNG`, or `MP4` for a video, re-render it. It costs 1 credit per slide sent.
+- The design keeps its `designId` and name, and its template's look and size and its brand unless `--template-id`/`--brand-id` give new ones (a video its style and audio, unless `--motion-style`/`--sequence`/`--background-music-id`/`--voiceover` change them), so anything already scheduled with it shows the edit. No need to reschedule.
+- `--response-type` defaults to `DESIGN` (saved defaults don't apply, nor a saved template or brand); `PDF`/`PNG`, or `MP4` for a video, re-render it. It costs 1 credit per slide sent.
 - A post still being made has no design to read or edit yet: wait for `--wait` or `COMPLETED`. A slide whose title was turned off in the editor comes back without a `heading`; add one before sending it back.
 
 ## Common Patterns
@@ -376,9 +376,9 @@ postnitro video generate --context "topic|url" --response-type MP4 [--motion-sty
 postnitro video import --file ./scenes.json --response-type MP4 --wait
 postnitro motion styles | postnitro motion sequences   # ids for --motion-style / --sequence
 
-# Read & edit a post made through the API, in place (by designId)
+# Read & edit a post made through the API, in place (by embedPostId)
 postnitro post get <embedPostId>
-postnitro post edit <embedPostId> (--file ./post.json | --slides '<json>') --wait
+postnitro post edit <embedPostId> (--file ./post.json | --slides '<json>') [--template-id <id>] [--brand-id <id>] --wait
 
 # Schedule (date REQUIRED + future; use designId, not embedPostId)
 postnitro schedule create --status SCHEDULED|DRAFT --scheduled-at "<iso>" --design-id <id> \

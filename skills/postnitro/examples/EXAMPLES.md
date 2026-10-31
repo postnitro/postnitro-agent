@@ -72,7 +72,8 @@ postnitro video generate --context "3 habits that make remote teams faster" \
 ## Edit a post you made
 
 An edit replaces every slide in place, so start from what's there. The design keeps its
-`designId`, so anything scheduled with it shows the edit.
+`designId`, so anything scheduled with it shows the edit. `--template-id` or `--brand-id` moves
+it to another template or brand at the same time.
 
 ```bash
 postnitro post get <embedPostId> > post.json
